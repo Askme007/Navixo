@@ -1,5 +1,13 @@
 # Navixo (Legacy Pathfinder Prototype)
 
+> ⚠️ Historical Repository
+
+> This repository contains the original Pathfinder AI prototype developed during the Cisco-NASSCOM ThingQbator program in 2025.
+
+> The project later evolved into Navixo after a major product pivot from an AI mentoring platform to a student execution and preparation system.
+
+> This repository is preserved for historical and portfolio purposes and is no longer actively developed.
+
 Pathfinder is a **frontend-only UI prototype** for an AI-powered career guidance platform.  
 It demonstrates how students can interact with an AI mentor, explore structured career roadmaps, and understand their skill gaps through interactive UI components.
 
