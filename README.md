@@ -1,4 +1,4 @@
-# Pathfinder – AI Career Mentor (Frontend Prototype)
+# Navixo (Legacy Pathfinder Prototype)
 
 Pathfinder is a **frontend-only UI prototype** for an AI-powered career guidance platform.  
 It demonstrates how students can interact with an AI mentor, explore structured career roadmaps, and understand their skill gaps through interactive UI components.
