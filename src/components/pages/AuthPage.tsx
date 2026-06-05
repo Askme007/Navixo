@@ -161,38 +161,37 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
       <div className="absolute top-[30%] left-[20%] w-96 h-96 bg-[#3B82F6]/10 rounded-full blur-[120px]" />
       <div className="absolute top-[70%] right-[15%] w-80 h-80 bg-[#8B5CF6]/8 rounded-full blur-[100px]" />
 
+      {/* Back Button */}
+      {/* <Button
+        variant="ghost"
+        onClick={onBack}
+        className="text-white/60 hover:text-white hover:bg-white/5 transition-all px-3 py-2 h-auto rounded-xl"
+        style={{
+          fontFamily: "Inter, sans-serif",
+          fontWeight: 500,
+          fontSize: "14px",
+        }}
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back
+      </Button> */}
       <div className="w-full max-w-[440px] relative z-10">
-        {/* Back Button */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.4 }}
           className="mb-8"
-        >
-          <Button
-            variant="ghost"
-            onClick={onBack}
-            className="text-white/60 hover:text-white hover:bg-white/5 transition-all px-3 py-2 h-auto rounded-xl"
-            style={{
-              fontFamily: "Inter, sans-serif",
-              fontWeight: 500,
-              fontSize: "14px",
-            }}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-        </motion.div>
+        ></motion.div>
 
         {/* Logo - Clean, No Container */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="flex justify-center mb-10"
         >
           <NavixoLogo size={56} variant="white" />
-        </motion.div>
+        </motion.div> */}
 
         {/* Auth Card */}
         <motion.div

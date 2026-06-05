@@ -12,8 +12,6 @@ export function AuthCallback() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      console.log("USER", user);
-
       if (!user) {
         navigate("/auth");
         return;
@@ -30,7 +28,6 @@ export function AuthCallback() {
           onConflict: "id",
         },
       );
-      console.log("PROFILE ERROR", profileError);
       if (profileError) {
         console.error("Profile upsert failed:", profileError);
         navigate("/auth");
