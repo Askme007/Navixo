@@ -94,6 +94,8 @@ export function RoadmapPage({
   const { roadmapId } = useParams();
   const navigate = useNavigate();
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const loadLatestRoadmap = async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData?.user || !roadmapId) return;
@@ -353,17 +355,14 @@ export function RoadmapPage({
 
     const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-    const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/roadmap/generate`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ career: input }),
+    const res = await fetch(`${API_URL}/api/roadmap/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-    );
+      body: JSON.stringify({ career: input }),
+    });
 
     const { roadmapId } = await res.json();
 
