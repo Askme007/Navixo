@@ -26,18 +26,25 @@ export function AuthCallback() {
         return;
       }
 
-      // 🔎 Only here check onboarding
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", user.id)
-        .single();
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          full_name:
+            user.user_metadata?.full_name || user.user_metadata?.name || "",
+          onboarding_completed: true,
+        },
+        {
+          onConflict: "id",
+        },
+      );
 
-      if (!profile?.onboarding_completed) {
-        navigate("/onboarding", { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
+      if (profileError) {
+        console.error("Profile upsert failed:", profileError);
+        navigate("/auth");
+        return;
       }
+
+      navigate("/dashboard", { replace: true });
     };
 
     run();

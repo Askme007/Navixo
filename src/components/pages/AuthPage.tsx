@@ -68,16 +68,35 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
       return;
     }
 
-    if (data.session) {
-      if (data.session && data.user) {
-        const fullName = data.user.user_metadata?.full_name;
-        const name =
-          fullName && fullName.trim().length > 0
-            ? fullName
-            : data.user.email?.split("@")[0] || "User";
+    if (data.session && data.user) {
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: data.user.id,
+          full_name:
+            data.user.user_metadata?.full_name ||
+            data.user.user_metadata?.name ||
+            "",
+          onboarding_completed: true,
+        },
+        {
+          onConflict: "id",
+        },
+      );
 
-        onAuth(name);
+      if (profileError) {
+        console.error("Profile upsert failed:", profileError);
+        setLoginError("Failed to initialize profile");
+        return;
       }
+
+      const fullName = data.user.user_metadata?.full_name;
+
+      const name =
+        fullName && fullName.trim().length > 0
+          ? fullName
+          : data.user.email?.split("@")[0] || "User";
+
+      onAuth(name);
     }
   };
 
@@ -126,7 +145,7 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: window.location.origin + "/dashboard",
+        redirectTo: window.location.origin + "/auth/callback",
       },
     });
 
