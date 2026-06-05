@@ -8,18 +8,11 @@ export function AuthCallback() {
 
   useEffect(() => {
     const run = async () => {
-      const { error } = await supabase.auth.exchangeCodeForSession(
-        window.location.href,
-      );
-
-      if (error) {
-        navigate("/auth");
-        return;
-      }
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      console.log("USER", user);
 
       if (!user) {
         navigate("/auth");
@@ -37,7 +30,7 @@ export function AuthCallback() {
           onConflict: "id",
         },
       );
-
+      console.log("PROFILE ERROR", profileError);
       if (profileError) {
         console.error("Profile upsert failed:", profileError);
         navigate("/auth");
