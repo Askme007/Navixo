@@ -17,7 +17,7 @@ The platform enables users to:
 
 ## Live Demo
 
-https://navixo.site
+Visit : https://navixo.site
 
 ---
 
@@ -99,13 +99,21 @@ supabase/
 ## Architecture
 
 Frontend (React)
+
 ↓
+
 Supabase Authentication
+
 ↓
+
 Node/Express API
+
 ↓
+
 Supabase PostgreSQL
+
 ↓
+
 Roadmap & AI Services
 
 ---
@@ -151,8 +159,10 @@ Upcoming improvements:
 
 ## License
 
-MIT License
+This project is currently not licensed for redistribution or commercial use.
 
 ---
 
-Built as part of the journey from the Pathfinder AI prototype to Navixo.
+## Made with 💚 by
+- [Ashkrit Rai](https://github.com/Askme007)
+- [Abhishek Kumar](https://github.com/akabhi2311)
