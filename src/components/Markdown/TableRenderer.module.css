@@ -1,0 +1,60 @@
+/* Table Renderer Styles - Scoped CSS Module */
+
+.table-wrapper {
+  margin: 20px 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table thead {
+  background: #2B2B2B;
+}
+
+.table th {
+  padding: 14px 18px;
+  text-align: left;
+  font-weight: 600;
+  color: #FFFFFF;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.table td {
+  padding: 14px 18px;
+  color: #F7F7F7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.table tbody tr {
+  background: #232323;
+  transition: background 0.2s;
+}
+
+.table tbody tr:hover {
+  background: #262626;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Column alignment */
+.table th[align="center"],
+.table td[align="center"] {
+  text-align: center;
+}
+
+.table th[align="right"],
+.table td[align="right"] {
+  text-align: right;
+}

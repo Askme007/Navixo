@@ -3,3 +3,9 @@ dist/
 .env
 .vscode/
 .idea/
+
+backend/.env
+backend/node_modules/
+
+build/
+supabase/.temp/

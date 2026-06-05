@@ -1,0 +1,78 @@
+/* Footnotes Panel Styles - Scoped CSS Module */
+
+.footnotes-panel {
+  margin-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 18px;
+}
+
+.footnotes-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  background: #232323;
+  color: #F7F7F7;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.footnotes-toggle:hover {
+  background: #262626;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.footnotes-toggle:focus {
+  outline: 2px solid #5B9FFF;
+  outline-offset: 2px;
+}
+
+.footnotes-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.footnotes-list {
+  margin-top: 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.footnote-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+  background: #232323;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.footnote-item:last-child {
+  margin-bottom: 0;
+}
+
+.footnote-number {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #2B2B2B;
+  color: #5B9FFF;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.footnote-text {
+  flex: 1;
+  color: #D1D1D1;
+  font-size: 14px;
+  line-height: 1.6;
+}
