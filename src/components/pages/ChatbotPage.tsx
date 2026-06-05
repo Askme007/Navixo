@@ -95,6 +95,8 @@ export function ChatbotPage({
     },
   ]);
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
   // 🔹 ADD THIS:
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
@@ -174,7 +176,7 @@ export function ChatbotPage({
 
       const token = session.access_token;
 
-      const res = await fetch("http://localhost:3001/api/conversations/list", {
+      const res = await fetch(`${API_URL}/api/conversations/list`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -210,17 +212,14 @@ export function ChatbotPage({
 
         const token = session.access_token;
 
-        const res = await fetch(
-          "http://localhost:3001/api/conversations/create",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ title: "New Chat" }),
+        const res = await fetch(`${API_URL}/api/conversations/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
-        );
+          body: JSON.stringify({ title: "New Chat" }),
+        });
 
         const data = await res.json();
         console.log("Created conversation:", data);
@@ -313,7 +312,7 @@ export function ChatbotPage({
     setConversationId(id);
 
     // 2. load messages from backend
-    const res = await fetch(`http://localhost:3001/api/messages/${id}`, {
+    const res = await fetch(`${API_URL}/api/messages/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -545,7 +544,7 @@ export function ChatbotPage({
       } = await supabase.auth.getSession();
       const token = session.access_token;
 
-      const response = await fetch("http://localhost:3001/api/stream", {
+      const response = await fetch(`${API_URL}/api/stream`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -793,7 +792,7 @@ export function ChatbotPage({
                       const token = session.access_token;
 
                       const res = await fetch(
-                        "http://localhost:3001/api/conversations/create",
+                        `${API_URL}/api/conversations/create`,
                         {
                           method: "POST",
                           headers: {

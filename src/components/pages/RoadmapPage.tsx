@@ -353,14 +353,17 @@ export function RoadmapPage({
 
     const token = (await supabase.auth.getSession()).data.session?.access_token;
 
-    const res = await fetch("http://localhost:3001/api/roadmap/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/roadmap/generate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ career: input }),
       },
-      body: JSON.stringify({ career: input }),
-    });
+    );
 
     const { roadmapId } = await res.json();
 
