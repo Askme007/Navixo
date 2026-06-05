@@ -77,7 +77,7 @@ router.post("/", async (req, res) => {
 
     // Prepare Gemini model
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
     });
 
     const contents = [
