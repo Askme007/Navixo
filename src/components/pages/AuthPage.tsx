@@ -30,6 +30,7 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
   const [signupError, setSignupError] = useState<string | null>(null);
   const [signupSuccess, setSignupSuccess] = useState<string | null>(null);
   const [waitingForVerification, setWaitingForVerification] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // Reset scroll position to top when component mounts
   useEffect(() => {
@@ -111,7 +112,7 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
       password: signupPassword,
       options: {
         data: { full_name: signupName },
-        emailRedirectTo: "http://localhost:3000/auth/callback",
+        emailRedirectTo: `${API_URL}/auth/callback`,
       },
     });
 
