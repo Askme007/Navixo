@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import { Button } from "../ui/button";
 import { ArrowLeft } from "lucide-react";
-import { NavixoLogo } from "../navixoLogo";
+import { NavixoLogo } from "../NavixoLogo";
 
 import { ChatHistorySidebar } from "../chat/ChatHistorySidebar";
 import { ChatAnalysisSidebar } from "../chat/ChatAnalysisSidebar";
