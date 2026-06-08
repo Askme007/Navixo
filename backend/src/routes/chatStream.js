@@ -1,3 +1,4 @@
+// backend\src\routes\chatStream.js
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "../supabaseClient.js";
@@ -77,7 +78,7 @@ router.post("/", async (req, res) => {
 
     // Prepare Gemini model
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite",
     });
 
     const contents = [

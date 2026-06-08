@@ -2,7 +2,7 @@
  * CodeBlock Component
  * Production-ready code block with copy functionality and syntax highlighting
  */
-
+// src\components\Markdown\CodeBlock.tsx
 import React, { useState, useMemo } from "react";
 import { Check, Copy } from "lucide-react";
 import { highlightCode } from "./utils/syntaxHighlight";

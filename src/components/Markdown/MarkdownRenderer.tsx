@@ -15,7 +15,7 @@
  *   onCopy={(text) => console.log('Copied:', text)}
  * />
  */
-
+// src\components\Markdown\MarkdownRenderer.tsx
 import React, { useEffect, useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -104,7 +104,7 @@ export function MarkdownRenderer({
         "*": ["className", "id"],
       },
     }),
-    []
+    [],
   );
 
   return (
@@ -175,7 +175,7 @@ export function MarkdownRenderer({
                   }
                 }
                 return false;
-              }
+              },
             );
 
             // If has block children, return a div instead of p to avoid nesting warnings

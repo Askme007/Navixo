@@ -1,3 +1,4 @@
+// src\App.tsx
 import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "./supabaseClient"; // ✅ IMPORTANT

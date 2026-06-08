@@ -1,11 +1,9 @@
-// backend/src/supabaseClient.js
-
 import dotenv from "dotenv";
-dotenv.config(); // 🔥 Most important line in whole backend
+dotenv.config();
 
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
-// env must be loaded before accessing them
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -14,4 +12,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  realtime: {
+    transport: ws,
+  },
+});
