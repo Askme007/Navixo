@@ -1,47 +1,88 @@
 # Navixo
 
-AI-powered career navigation platform that helps students and early professionals discover career paths, generate personalized learning roadmaps, identify skill gaps, and interact with an AI mentor.
+Placement preparation is not an information problem. It is an execution problem.
 
-## Overview
+Navixo is a student execution platform designed to help engineering students move from planning to consistent action. Instead of overwhelming users with endless resources, Navixo generates structured preparation roadmaps, tracks progress, integrates coding platform performance, and provides a focused execution workflow for placement preparation.
 
-Navixo combines roadmap generation, AI guidance, and progress tracking into a single platform designed to help users make informed career decisions.
-
-The platform enables users to:
-
-* Generate personalized career roadmaps
-* Explore learning paths and milestones
-* Chat with an AI mentor for guidance
-* Track progress over time
-* Identify skills required for target roles
-* Receive structured recommendations based on goals
-
-## Live Demo
-
-Visit : https://navixo.site
+**Live Demo:** https://navixo.site
 
 ---
 
-## Features
+## Why Navixo Exists
 
-### AI Mentor
+Most students already know what they should study.
 
-Interactive AI-powered mentor capable of answering career-related questions and providing personalized guidance.
+The real challenge is:
 
-### Personalized Roadmaps
+* What should I do today?
+* Am I making progress?
+* Which topics am I weak in?
+* How close am I to being placement-ready?
 
-Generates structured learning plans based on a user's target career path and current skill level.
+Navixo was built to answer those questions through structured planning, progress tracking, and execution-focused workflows.
 
-### Progress Tracking
+---
 
-Track roadmap completion and monitor learning progress.
+## Core Features
 
-### Career Navigation
+### Personalized Onboarding
 
-Explore possible career directions and understand required skills, technologies, and milestones.
+Users provide their preparation background, goals, and current state.
+
+Navixo uses this information to generate a tailored preparation experience.
+
+### Roadmap Generation
+
+Generate structured learning roadmaps covering:
+
+* Data Structures & Algorithms
+* Core CS Subjects
+* Development
+* Placement Preparation
+
+Roadmaps are saved and can be revisited anytime.
+
+### Execution Dashboard
+
+Track preparation through a centralized dashboard containing:
+
+* Active roadmaps
+* Completed milestones
+* Current focus areas
+* Platform statistics
+* Progress summaries
+
+### LeetCode Integration
+
+Connect your LeetCode profile and track:
+
+* Problems solved
+* Easy / Medium / Hard breakdown
+* Ranking information
+* Sync status
+
+### Codeforces Integration
+
+Connect your Codeforces account and monitor:
+
+* Rating
+* Problem-solving activity
+* Competitive programming progress
+
+### AI Chat Workspace
+
+Interactive chat interface for:
+
+* Roadmap clarification
+* Learning guidance
+* Preparation questions
+* Study support
+
+Includes persistent conversation history.
 
 ### Authentication
 
-Secure authentication using Supabase Auth with support for:
+Secure authentication using Supabase Auth:
 
 * Email & Password
 * Google OAuth
@@ -50,29 +91,17 @@ Secure authentication using Supabase Auth with support for:
 
 ## Tech Stack
 
-### Frontend
+| Layer          | Technology                                 |
+| -------------- | ------------------------------------------ |
+| Frontend       | React, TypeScript, Vite                    |
+| Styling        | Tailwind CSS, Shadcn UI                    |
+| Backend        | Node.js, Express.js                        |
+| Database       | PostgreSQL (Supabase)                      |
+| Authentication | Supabase Auth, JWT-based API Authorization |
+| AI             | Google Gemini                              |
+| Deployment     | Vercel (Frontend), Render (Backend)        |
+| Domain         | navixo.site                                |
 
-* React
-* TypeScript
-* Vite
-* Tailwind CSS
-* Shadcn UI
-
-### Backend
-
-* Node.js
-* Express.js
-
-### Database & Auth
-
-* Supabase
-* PostgreSQL
-* Row Level Security (RLS)
-
-### Deployment
-
-* Vercel
-* Render
 
 ---
 
@@ -81,88 +110,132 @@ Secure authentication using Supabase Auth with support for:
 ```text
 src/
 ├── components/
-├── pages/
-├── services/
+│   ├── dashboard/
+│   ├── chat/
+│   ├── Markdown/
+│   ├── ui/
+│   └── pages/
+│
 ├── hooks/
+├── services/
+├── utils/
+└── router.tsx
 
 backend/
-├── server.js
-├── routes/
-├── services/
+├── src/
+│   ├── controllers/
+│   ├── routes/
+│   ├── services/
+│   ├── middleware/
+│   └── config/
+│
+└── server.js
 
 supabase/
-├── migrations/
+└── functions/
 ```
 
 ---
 
-## Architecture
+## Current Capabilities
 
-Frontend (React)
-
-↓
-
-Supabase Authentication
-
-↓
-
-Node/Express API
-
-↓
-
-Supabase PostgreSQL
-
-↓
-
-Roadmap & AI Services
+* User authentication
+* Google OAuth login
+* Placement onboarding workflow
+* Roadmap generation
+* Dashboard analytics
+* LeetCode synchronization
+* Codeforces synchronization
+* Persistent AI chat history
+* Progress tracking
+* Responsive interface
 
 ---
 
-## Current Status
+## Local Development
 
-Active development.
+### Frontend
 
-Upcoming improvements:
+```bash
+npm install
+npm run dev
+```
 
-* Conversation history
-* Resume analysis
-* Interview preparation
-* Advanced roadmap analytics
-* Learning recommendations
-* User profile enhancements
+### Backend
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+### Environment Variables
+
+Frontend:
+
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_API_URL=
+```
+
+Backend:
+
+```env
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+GEMINI_API_KEY=
+PORT=
+```
 
 ---
 
 ## Screenshots
 
-<img width="1883" height="1066" alt="Screenshot 2026-06-06 033145" src="https://github.com/user-attachments/assets/54cade4b-478b-45a9-85af-ba6276aade8b" />
+### Landing Page
+
+<img width="1896" height="955" alt="Screenshot 2026-06-09 021201" src="https://github.com/user-attachments/assets/83262b28-1bf2-4989-a653-51ec3db8d18b" />
+
+
+
+### Dashboard
+
+<img width="1898" height="1070" alt="image" src="https://github.com/user-attachments/assets/4a23a605-8d11-4b04-bc86-180203f1e65a" />
+
+
+### Roadmap
+
+<img width="1907" height="1078" alt="image" src="https://github.com/user-attachments/assets/4995ceaf-64c5-40ef-ba6b-ee3aa5b3fd15" />
+
+
+### Chat Workspace
+
+<img width="1917" height="1078" alt="image" src="https://github.com/user-attachments/assets/513739f8-95cc-42dd-bd85-33dad6c37dd4" />
+
 
 ---
 
-<img width="1918" height="1078" alt="Screenshot 2026-06-06 033638" src="https://github.com/user-attachments/assets/26c4cfa2-6197-4575-98b6-baf6f156a326" />
+## Roadmap
+
+Upcoming improvements:
+
+* Better execution analytics
+* Advanced roadmap visualization
+* Resume analysis
+* Interview preparation modules
+* Progress insights
+* Improved mobile experience
 
 ---
 
-<img width="1892" height="1077" alt="Screenshot 2026-06-06 033709" src="https://github.com/user-attachments/assets/557a05d1-5c8e-488f-9448-7b29ff907d20" />
+## Contributors
 
----
-<img width="1898" height="1077" alt="Screenshot 2026-06-06 033847" src="https://github.com/user-attachments/assets/a70bcb0a-e59a-46dc-b568-60e6a1a2b427" />
-
----
-<img width="1918" height="1078" alt="Screenshot 2026-06-06 033915" src="https://github.com/user-attachments/assets/fdd7f8db-6b12-4518-a3b1-9332def38485" />
-
----
-<img width="1908" height="1078" alt="Screenshot 2026-06-06 035322" src="https://github.com/user-attachments/assets/ec140fa9-e17a-44db-adf1-b029e702192e" />
-
+* Ashkrit Rai — https://github.com/Askme007
+* Abhishek Kumar — https://github.com/akabhi2311
 
 ---
 
 ## License
 
 This project is currently not licensed for redistribution or commercial use.
-
----
-
-## Made with 💚 by
-- [Ashkrit Rai](https://github.com/Askme007)
-- [Abhishek Kumar](https://github.com/akabhi2311)
