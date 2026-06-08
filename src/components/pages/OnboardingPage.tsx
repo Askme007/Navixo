@@ -8,12 +8,15 @@ import { Textarea } from "../ui/textarea";
 
 export function OnboardingPage({
   onBack,
+  onComplete,
 }: {
   onComplete: (data: any) => void;
   onBack: () => void;
 }) {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     education: "bachelors",
     currentStatus: "studying",
@@ -31,16 +34,38 @@ export function OnboardingPage({
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setIsSubmitting(true);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      await supabase
-        .from("profiles")
-        .update({ onboarding_completed: true, onboarding: formData })
-        .eq("id", user.id);
+    setError(null);
+
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError) throw authError;
+
+      if (user) {
+        // Update the profile with the JSONB onboarding data
+        const { error: dbError } = await supabase
+          .from("profiles")
+          .update({
+            onboarding_completed: true,
+            onboarding: formData,
+          })
+          .eq("id", user.id);
+
+        if (dbError) {
+          console.error("Database Update Error:", dbError);
+          throw new Error(dbError.message);
+        }
+      }
+
+      navigate("/dashboard", { replace: true });
+    } catch (err: any) {
+      console.error("Submission failed:", err);
+      setError(err.message || "Failed to save your setup. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    navigate("/dashboard", { replace: true });
   };
 
   return (
@@ -53,13 +78,19 @@ export function OnboardingPage({
           </p>
         </div>
 
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-6 bg-[#111111] border border-white/10 p-6 md:p-8 rounded-2xl">
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <Label className="text-gray-400">Education Level</Label>
                 <select
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-white outline-none"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-white outline-none focus:border-purple-500/50 transition-colors"
                   value={formData.education}
                   onChange={(e) =>
                     setFormData({ ...formData, education: e.target.value })
@@ -73,7 +104,7 @@ export function OnboardingPage({
               <div className="space-y-3">
                 <Label className="text-gray-400">Current Status</Label>
                 <select
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-white outline-none"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-white outline-none focus:border-purple-500/50 transition-colors"
                   value={formData.currentStatus}
                   onChange={(e) =>
                     setFormData({ ...formData, currentStatus: e.target.value })
@@ -94,7 +125,7 @@ export function OnboardingPage({
                 onChange={(e) =>
                   setFormData({ ...formData, domain: e.target.value })
                 }
-                className="bg-[#0A0A0A] border-white/10 h-12"
+                className="bg-[#0A0A0A] border-white/10 h-12 focus-visible:ring-purple-500/30"
                 placeholder="e.g. Software Development, AI..."
               />
             </div>
@@ -109,7 +140,7 @@ export function OnboardingPage({
                 onChange={(e) =>
                   setFormData({ ...formData, shortTermGoal: e.target.value })
                 }
-                className="bg-[#0A0A0A] border-white/10 min-h-[100px]"
+                className="bg-[#0A0A0A] border-white/10 min-h-[100px] focus-visible:ring-purple-500/30"
                 placeholder="Land a frontend internship..."
               />
             </div>
@@ -128,13 +159,13 @@ export function OnboardingPage({
                   onChange={(e) =>
                     setFormData({ ...formData, skillLevel: e.target.value })
                   }
-                  className="bg-[#0A0A0A] border-white/10 h-12"
+                  className="bg-[#0A0A0A] border-white/10 h-12 focus-visible:ring-purple-500/30"
                 />
               </div>
               <div className="space-y-3">
                 <Label className="text-gray-400">Daily Time Commitment</Label>
                 <select
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-white outline-none"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-lg p-3 text-white outline-none focus:border-purple-500/50 transition-colors"
                   value={formData.dailyTime}
                   onChange={(e) =>
                     setFormData({ ...formData, dailyTime: e.target.value })
@@ -163,7 +194,7 @@ export function OnboardingPage({
               type="button"
               variant="outline"
               onClick={() => handleSubmit()}
-              className="border-white/10 text-white"
+              className="border-white/10 text-white hover:bg-white/5"
             >
               Skip
             </Button>

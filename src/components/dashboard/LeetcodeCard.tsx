@@ -33,10 +33,10 @@ export function LeetcodeCard() {
           <img
             src="/leetcode.svg"
             alt="LeetCode"
-            className="w-9 h-9 object-contain"
+            className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
           />
           <h3
-            className="text-white font-semibold text-xl"
+            className="text-white font-semibold text-lg sm:text-xl"
             style={{ fontFamily: "Space Grotesk, sans-serif" }}
           >
             LeetCode
@@ -72,11 +72,11 @@ export function LeetcodeCard() {
             className="bg-white/5 border-white/10 text-white focus:border-[#FFA116]"
           />
 
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
               onClick={handleSave}
               disabled={syncingLeetcode || !leetcodeUsername}
-              className="flex-1 bg-[#FFA116]/20 text-[#FFA116] hover:bg-[#FFA116]/30 rounded-xl"
+              className="w-full sm:flex-1 bg-[#FFA116]/20 text-[#FFA116] hover:bg-[#FFA116]/30 rounded-xl"
             >
               {syncingLeetcode ? "Syncing..." : "Connect"}
             </Button>
@@ -88,7 +88,7 @@ export function LeetcodeCard() {
                   setLeetcodeUsername(leetcodeProfile.username);
                 }}
                 variant="ghost"
-                className="bg-white/5 text-white/60 hover:text-white rounded-xl"
+                className="w-full sm:flex-none bg-white/5 text-white/60 hover:text-white rounded-xl"
               >
                 Cancel
               </Button>
@@ -105,38 +105,32 @@ export function LeetcodeCard() {
 
             const radius = 52;
             const circumference = 2 * Math.PI * radius;
-
             const strokeDashoffset =
               circumference - (solvedPercent / 100) * circumference;
 
             return (
-              <div className="space-y-3">
+              <div className="space-y-5 sm:space-y-6">
                 {/* User Header */}
                 <div
-                  className="flex items-center justify-between"
+                  className="flex flex-col sm:flex-row sm:items-end justify-between gap-1 sm:gap-0"
                   style={{
                     fontFamily: "JetBrains Mono, monospace",
                   }}
                 >
-                  <h1
-                    className="text-4xl font-bold text-white tracking-tight"
-                    style={{
-                      fontFamily: "JetBrains Mono, monospace",
-                    }}
-                  >
+                  <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight truncate max-w-full">
                     {leetcodeProfile.username}
                   </h1>
 
-                  <span className="text-2xl font-bold text-white/85">
+                  <span className="text-xl sm:text-2xl font-bold text-white/85">
                     #{leetcodeProfile.ranking}
                   </span>
                 </div>
 
-                {/* Main Layout */}
-                <div className="flex items-center gap-8">
+                {/* Main Layout - Stacks on Mobile */}
+                <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
                   {/* Ring */}
                   <div className="flex-shrink-0">
-                    <div className="relative w-32 h-32 flex items-center justify-center">
+                    <div className="relative w-32 h-32 flex items-center justify-center mx-auto">
                       <svg
                         className="absolute inset-0 -rotate-90"
                         width="128"
@@ -150,7 +144,6 @@ export function LeetcodeCard() {
                           strokeWidth="8"
                           fill="none"
                         />
-
                         <circle
                           cx="64"
                           cy="64"
@@ -165,7 +158,7 @@ export function LeetcodeCard() {
                       </svg>
 
                       <span
-                        className="text-4xl font-bold text-white"
+                        className="text-3xl sm:text-4xl font-bold text-white"
                         style={{
                           fontFamily: "JetBrains Mono, monospace",
                         }}
@@ -175,22 +168,21 @@ export function LeetcodeCard() {
                     </div>
                   </div>
 
-                  {/* Progress */}
-                  <div className="flex-1 space-y-3">
+                  {/* Progress Bars */}
+                  <div className="w-full sm:flex-1 space-y-4">
                     {/* Easy */}
                     <div>
-                      <div className="flex justify-between items-center mb-1">
+                      <div className="flex justify-between items-center mb-1.5">
                         <span
-                          className="font-bold text-[#5cb85c] text-xl"
+                          className="font-bold text-[#5cb85c] text-lg sm:text-xl"
                           style={{
                             fontFamily: "JetBrains Mono, monospace",
                           }}
                         >
                           Easy
                         </span>
-
                         <span
-                          className="text-white/80 font-bold"
+                          className="text-white/80 font-bold text-sm sm:text-base"
                           style={{
                             fontFamily: "JetBrains Mono, monospace",
                           }}
@@ -198,15 +190,11 @@ export function LeetcodeCard() {
                           {leetcodeProfile.easy} / {EASY_TOTAL}
                         </span>
                       </div>
-
                       <div className="h-1.5 rounded-full bg-white/15 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-[#5cb85c]"
                           style={{
-                            width: `${(
-                              (leetcodeProfile.easy / EASY_TOTAL) *
-                              100
-                            ).toFixed(1)}%`,
+                            width: `${((leetcodeProfile.easy / EASY_TOTAL) * 100).toFixed(1)}%`,
                           }}
                         />
                       </div>
@@ -214,18 +202,17 @@ export function LeetcodeCard() {
 
                     {/* Medium */}
                     <div>
-                      <div className="flex justify-between items-center mb-1">
+                      <div className="flex justify-between items-center mb-1.5">
                         <span
-                          className="font-bold text-[#f0ad4e] text-xl"
+                          className="font-bold text-[#f0ad4e] text-lg sm:text-xl"
                           style={{
                             fontFamily: "JetBrains Mono, monospace",
                           }}
                         >
                           Medium
                         </span>
-
                         <span
-                          className="text-white/80 font-bold"
+                          className="text-white/80 font-bold text-sm sm:text-base"
                           style={{
                             fontFamily: "JetBrains Mono, monospace",
                           }}
@@ -233,15 +220,11 @@ export function LeetcodeCard() {
                           {leetcodeProfile.medium} / {MEDIUM_TOTAL}
                         </span>
                       </div>
-
                       <div className="h-1.5 rounded-full bg-white/15 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-[#f0ad4e]"
                           style={{
-                            width: `${(
-                              (leetcodeProfile.medium / MEDIUM_TOTAL) *
-                              100
-                            ).toFixed(1)}%`,
+                            width: `${((leetcodeProfile.medium / MEDIUM_TOTAL) * 100).toFixed(1)}%`,
                           }}
                         />
                       </div>
@@ -249,18 +232,17 @@ export function LeetcodeCard() {
 
                     {/* Hard */}
                     <div>
-                      <div className="flex justify-between items-center mb-1">
+                      <div className="flex justify-between items-center mb-1.5">
                         <span
-                          className="font-bold text-[#d9534f] text-xl"
+                          className="font-bold text-[#d9534f] text-lg sm:text-xl"
                           style={{
                             fontFamily: "JetBrains Mono, monospace",
                           }}
                         >
                           Hard
                         </span>
-
                         <span
-                          className="text-white/80 font-bold"
+                          className="text-white/80 font-bold text-sm sm:text-base"
                           style={{
                             fontFamily: "JetBrains Mono, monospace",
                           }}
@@ -268,15 +250,11 @@ export function LeetcodeCard() {
                           {leetcodeProfile.hard} / {HARD_TOTAL}
                         </span>
                       </div>
-
                       <div className="h-1.5 rounded-full bg-white/15 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-[#d9534f]"
                           style={{
-                            width: `${(
-                              (leetcodeProfile.hard / HARD_TOTAL) *
-                              100
-                            ).toFixed(1)}%`,
+                            width: `${((leetcodeProfile.hard / HARD_TOTAL) * 100).toFixed(1)}%`,
                           }}
                         />
                       </div>
@@ -286,7 +264,7 @@ export function LeetcodeCard() {
 
                 <button
                   onClick={() => setEditingLc(true)}
-                  className="w-full text-center text-xs text-white/30 hover:text-white/60 transition-colors"
+                  className="w-full text-center text-xs text-white/30 hover:text-white/60 transition-colors pt-2"
                 >
                   Change Profile
                 </button>
