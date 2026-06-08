@@ -1,5 +1,4 @@
 // src/components/chat/ChatMessageList.tsx
-import { NavixoLogo } from "../navixoLogo";
 import { Loader2, AlertCircle } from "lucide-react";
 import { MarkdownRenderer } from "../Markdown/MarkdownRenderer";
 
