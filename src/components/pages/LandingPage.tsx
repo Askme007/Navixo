@@ -127,12 +127,6 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             className="flex items-center gap-3"
           >
             <NavixoLogo size={30} variant="white" />
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold tracking-tight text-white">
-                Navixo
-              </p>
-              <p className="text-xs text-slate-400">Execution OS</p>
-            </div>
           </button>
 
           <nav className="hidden items-center gap-6 md:flex">
