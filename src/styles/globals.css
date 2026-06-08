@@ -278,7 +278,8 @@ html {
 
 /* Figma Background Replica */
 .chatbot-bg {
-  background: radial-gradient(
+  background:
+    radial-gradient(
       ellipse at top,
       rgba(32, 35, 41, 1) 0%,
       rgba(10, 10, 14, 1) 60%
