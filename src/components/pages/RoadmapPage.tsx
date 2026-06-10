@@ -8,6 +8,7 @@ import { Input } from "../ui/input";
 import { Card, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Progress } from "../ui/progress";
+import { authService } from "../../services/auth.service";
 import {
   ArrowLeft,
   BookOpen,
@@ -415,15 +416,16 @@ export function RoadmapPage({
 
   const loadLatestRoadmap = useCallback(async () => {
     if (!roadmapId) return;
-
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData?.user) return;
-
+    
+    const { data } = await supabase.auth.getUser();
+    
     const { data: roadmap, error: roadmapError } = await supabase
       .from("user_roadmaps")
       .select("*")
       .eq("id", roadmapId)
       .single();
+
+
 
     if (roadmapError || !roadmap) {
       setGenerationStatus("failed");
@@ -431,7 +433,9 @@ export function RoadmapPage({
       setExpandedStepId(null);
       return;
     }
-
+    if (roadmap.generation_status === "completed") {
+      setGenerationStatus("completed");
+    }
     const nextGenerationStatus: GenerationStatus =
       roadmap.generation_status === "creating" ||
       roadmap.generation_status === "processing" ||
@@ -440,7 +444,12 @@ export function RoadmapPage({
         ? roadmap.generation_status
         : "idle";
 
+
     setGenerationStatus(nextGenerationStatus);
+    console.log(
+      "ROADMAP STATUS =",
+      nextGenerationStatus
+    );
     setInput(roadmap.title ?? roadmap.career_goal ?? "");
 
     const { data: steps, error: stepsError } = await supabase
@@ -448,7 +457,7 @@ export function RoadmapPage({
       .select("*")
       .eq("roadmap_id", roadmap.id)
       .order("step_order");
-
+    
     if (stepsError) {
       console.error("Failed to load roadmap steps:", stepsError);
       setGenerationStatus("failed");
@@ -469,9 +478,7 @@ export function RoadmapPage({
         steps.map((step) => step.id),
       );
 
-    if (resourcesError) {
-      console.error("Failed to load step resources:", resourcesError);
-    }
+    
 
     const rebuiltNodes: RoadmapNode[] = steps.map((step) => ({
       id: step.id,
@@ -490,8 +497,10 @@ export function RoadmapPage({
           url: resource.url ?? "",
         })),
     }));
-
     setRoadmapNodes(rebuiltNodes);
+    useEffect(() => {
+      console.log("ROADMAP NODES CHANGED", roadmapNodes);
+    }, [roadmapNodes]);
     setExpandedStepId((current) =>
       current && rebuiltNodes.some((node) => node.id === current)
         ? current
@@ -500,53 +509,19 @@ export function RoadmapPage({
   }, [roadmapId]);
 
   useEffect(() => {
-    setRoadmapNodes([]);
-    setExpandedStepId(null);
     setShowPopup(false);
     setProcessMsgIndex(0);
     if (!roadmapId) {
       setGenerationStatus("idle");
       setInput("");
     }
-  }, [roadmapId]);
-
-  useEffect(() => {
-    if (roadmapId) {
-      loadLatestRoadmap();
-    }
-  }, [roadmapId, loadLatestRoadmap]);
+  }, [roadmapId]); 
 
   useEffect(() => {
     if (!roadmapId) return;
 
     const timer = setInterval(async () => {
-      const { data, error } = await supabase
-        .from("user_roadmaps")
-        .select("generation_status")
-        .eq("id", roadmapId)
-        .single();
-
-      if (error || !data?.generation_status) return;
-
-      const status: GenerationStatus =
-        data.generation_status === "creating" ||
-        data.generation_status === "processing" ||
-        data.generation_status === "completed" ||
-        data.generation_status === "failed"
-          ? data.generation_status
-          : "idle";
-
-      setGenerationStatus(status);
-
-      if (status === "completed") {
-        clearInterval(timer);
-        await loadLatestRoadmap();
-        return;
-      }
-
-      if (status === "failed") {
-        clearInterval(timer);
-      }
+      await loadLatestRoadmap();
     }, 2000);
 
     return () => clearInterval(timer);
@@ -566,30 +541,31 @@ export function RoadmapPage({
   }, [isLoading]);
 
   const handleGenerate = async () => {
+    console.log("GENERATE CLICKED");
     if (!input.trim() || generationLocked) return;
 
     try {
       setGenerationStatus("creating");
 
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
+      const token = authService.getToken();
 
-      if (!token) {
-        throw new Error("You are not signed in.");
-      }
+        if (!token) {
+          throw new Error("Not authenticated");
+        }
 
-      if (!API_URL) {
-        throw new Error("API URL is missing.");
-      }
-
-      const response = await fetch(`${API_URL}/api/roadmap/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ career: input.trim() }),
-      });
+        const response = await fetch(
+          `${API_URL}/api/roadmap/generate`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              career: input.trim(),
+            }),
+          }
+        );
 
       const body = await response.json().catch(() => ({}));
 
@@ -603,6 +579,7 @@ export function RoadmapPage({
 
       setGenerationStatus("processing");
       navigate(`/roadmap/${body.roadmapId}`);
+
     } catch (error: any) {
       console.error("Generate failed:", error);
       setGenerationStatus("failed");
@@ -650,9 +627,7 @@ export function RoadmapPage({
 
     try {
       setIsSaving(true);
-
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData.user;
+      const user = authService.getUser();
 
       if (!user) {
         throw new Error("Not authenticated");
@@ -759,6 +734,7 @@ export function RoadmapPage({
     navigate("/roadmap", { replace: true });
   };
 
+  
   return (
     <div className="min-h-screen bg-[#0B0B0F] text-white">
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sky-500/5 via-[#0B0B0F] to-violet-500/5" />

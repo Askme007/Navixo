@@ -24,9 +24,12 @@ export async function processRoadmap(roadmapId) {
       .eq("id", roadmapId)
       .single();
 
+    console.log("ROADMAP =", roadmap);
+    console.log("ROADMAP ERROR =", roadmapErr);
+
     if (roadmapErr || !roadmap) throw new Error("Roadmap not found");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
     const prompt = `
 Return STRICT JSON only.
@@ -49,8 +52,26 @@ Return STRICT JSON only.
 Career: "${roadmap.career_goal}"
 `;
 
-    const result = await model.generateContent(prompt);
+    let result;
 
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log("CALLING GEMINI...");
+        result = await model.generateContent(prompt);
+        console.log("GEMINI RESPONSE RECEIVED");
+        break;
+      } catch (err) {
+        if (err.status === 503 && attempt < 3) {
+          console.log(`Retry ${attempt} after Gemini 503...`);
+          await new Promise((resolve) =>
+            setTimeout(resolve, 3000 * attempt)
+          );
+          continue;
+        }
+
+        throw err;
+      }
+    }
     let text = result.response.text();
     text = text.replace(/```json|```/g, "").trim();
 

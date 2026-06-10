@@ -1,7 +1,7 @@
 // src/components/pages/ChatbotPage.tsx
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import { authService } from "../../services/auth.service";
 import { Button } from "../ui/button";
 import { ArrowLeft } from "lucide-react";
 import { NavixoLogo } from "../NavixoLogo";
@@ -20,7 +20,6 @@ export function ChatbotPage({
 }: {
   userName: string;
   onBack: () => void;
-  onLogout: () => void;
   initialMessage?: string;
   fromRoadmap?: boolean;
 }) {
@@ -39,7 +38,6 @@ export function ChatbotPage({
   );
   const [error, setError] = useState<string | null>(null);
 
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const API_URL = import.meta.env.VITE_API_URL;
@@ -49,27 +47,34 @@ export function ChatbotPage({
 
   useEffect(() => {
     const init = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = authService.getToken();
+
+      if (!token) {
+        navigate("/auth");
+        return;
+      }
 
       const res = await fetch(`${API_URL}/api/conversations/list`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+
       const data = await res.json();
+
       setHistory(data.conversations || []);
 
       const urlId = searchParams.get("id");
 
-      // CRITICAL BUG FIX: Only wipe local context if the URL actually changes to a completely different node id
       if (urlId && urlId !== currentConvIdRef.current) {
         currentConvIdRef.current = urlId;
         setConvId(urlId);
-        loadChat(urlId, session.access_token);
+
+        loadChat(urlId, token);
       } else if (!urlId) {
         currentConvIdRef.current = null;
         setConvId(null);
+
         setMessages([
           {
             id: "init",
@@ -80,6 +85,7 @@ export function ChatbotPage({
         ]);
       }
     };
+
     init();
   }, [searchParams]);
 
@@ -97,27 +103,39 @@ export function ChatbotPage({
   }, [messages, isThinking, error]);
 
   const loadChat = async (id: string, token?: string) => {
-    if (!token) {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      token = session?.access_token;
-    }
-    setConvId(id);
-    currentConvIdRef.current = id;
-    navigate(`/chat?id=${id}`, { replace: true });
-    setHistoryOpen(false);
+    const authToken = token || authService.getToken();
 
-    const res = await fetch(`${API_URL}/api/messages/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+    if (!authToken) {
+      navigate("/auth");
+      return;
+    }
+
+    setConvId(id);
+
+    currentConvIdRef.current = id;
+
+    navigate(`/chat?id=${id}`, {
+      replace: true,
     });
+
+
+    const res = await fetch(
+      `${API_URL}/api/messages/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+
     const data = await res.json();
+
     setMessages(
-      data.messages?.map((m: any) => ({
+      (data.messages || []).map((m: any) => ({
         id: m.id,
         role: m.role,
         content: m.content,
-      })) || [],
+      }))
     );
   };
 
@@ -133,112 +151,193 @@ export function ChatbotPage({
       },
     ]);
     navigate("/chat", { replace: true });
-    setHistoryOpen(false);
   };
 
   const handleSend = async () => {
     if (!input.trim() || isThinking || isStreaming) return;
+
     const userMsg = input.trim();
+
     setInput("");
     setError(null);
 
-    // Optimistic user bubble append occurs smoothly
     setMessages((prev) => [
       ...prev,
-      { id: Date.now().toString(), role: "user", content: userMsg },
+      {
+        id: Date.now().toString(),
+        role: "user",
+        content: userMsg,
+      },
     ]);
+
     setIsThinking(true);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error("Unauthorized");
+      const token = authService.getToken();
+
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
 
       let activeId = convId;
 
       if (!activeId) {
-        // Derive clean logging titles from user first message
         const title =
-          userMsg.length > 26 ? userMsg.substring(0, 26) + "..." : userMsg;
-        const res = await fetch(`${API_URL}/api/conversations/create`, {
+          userMsg.length > 26
+            ? userMsg.substring(0, 26) + "..."
+            : userMsg;
+
+        const createRes = await fetch(
+          `${API_URL}/api/conversations/create`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ title }),
+          }
+        );
+
+        const createData = await createRes.json();
+
+        console.log("CREATE RESPONSE:", createData);
+
+        if (!createRes.ok) {
+          throw new Error(
+            createData.error || "Failed to create conversation"
+          );
+        }
+
+        activeId = createData.conversationId;
+
+        if (!activeId) {
+          throw new Error(
+            "Backend returned no conversationId"
+          );
+        }
+
+        currentConvIdRef.current = activeId;
+
+        setConvId(activeId);
+
+        navigate(`/chat?id=${activeId}`, {
+          replace: true,
+        });
+
+        try {
+          const historyRes = await fetch(
+            `${API_URL}/api/conversations/list`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const historyData = await historyRes.json();
+
+          console.log("HISTORY RESPONSE:", historyData);
+
+          setHistory(historyData.conversations || []);
+        } catch (err) {
+          console.error("History refresh failed", err);
+        }
+      }
+
+      const streamRes = await fetch(
+        `${API_URL}/api/stream`,
+        {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ title }),
-        });
-        const data = await res.json();
-        activeId = data.conversationId;
+          body: JSON.stringify({
+            conversationId: activeId,
+            message: userMsg,
+          }),
+        }
+      );
 
-        // Lock references prior to calling the router to insulate state
-        currentConvIdRef.current = activeId;
-        setConvId(activeId);
-        navigate(`/chat?id=${activeId}`, { replace: true });
+      if (!streamRes.ok) {
+        const text = await streamRes.text();
 
-        fetch(`${API_URL}/api/conversations/list`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
-          .then((r) => r.json())
-          .then((d) => setHistory(d.conversations || []));
-      }
+        console.error("STREAM ERROR:", text);
 
-      const res = await fetch(`${API_URL}/api/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ conversationId: activeId, message: userMsg }),
-      });
-
-      if (!res.ok) {
-        if (res.status === 429)
-          throw new Error("API Limit Reached. System Cool-down engaged.");
-        throw new Error("Failed to link with execution backend.");
+        throw new Error(
+          `Stream failed (${streamRes.status})`
+        );
       }
 
       setIsThinking(false);
       setIsStreaming(true);
 
-      const reader = res.body!.getReader();
+      const reader = streamRes.body!.getReader();
+
       const decoder = new TextDecoder();
+
       let aiText = "";
+
       const msgId = Date.now().toString();
 
       setStreamingMessageId(msgId);
+
       setMessages((prev) => [
         ...prev,
-        { id: msgId, role: "assistant", content: "" },
+        {
+          id: msgId,
+          role: "assistant",
+          content: "",
+        },
       ]);
 
       let buffer = "";
+
       while (true) {
         const { value, done } = await reader.read();
+
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, {
+          stream: true,
+        });
+
         const lines = buffer.split("\n");
+
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith("data:")) {
-            const data = line.replace("data:", "").trim();
-            if (data === "[DONE]") continue;
-            try {
-              aiText += JSON.parse(data).token;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === msgId ? { ...m, content: aiText } : m,
-                ),
-              );
-            } catch {}
+          if (!line.startsWith("data:")) continue;
+
+          const payload = line.replace("data:", "").trim();
+
+          if (payload === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(payload);
+
+            aiText += parsed.token || "";
+
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === msgId
+                  ? {
+                      ...m,
+                      content: aiText,
+                    }
+                  : m
+              )
+            );
+          } catch (e) {
+            console.error("Stream parse error", e);
           }
         }
       }
     } catch (err: any) {
-      setError(err.message);
+      console.error("HANDLE SEND ERROR:", err);
+
+      setError(err.message || "Unknown error");
     } finally {
       setIsThinking(false);
       setIsStreaming(false);
@@ -255,8 +354,6 @@ export function ChatbotPage({
             <ChatHistorySidebar
               history={history}
               currentId={convId}
-              isOpen={historyOpen}
-              setIsOpen={setHistoryOpen}
               onSelect={loadChat}
               onNewChat={handleNewChat}
             />

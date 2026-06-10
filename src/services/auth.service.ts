@@ -1,27 +1,89 @@
-/**
- * auth.service.ts
- *
- * Single boundary for all authentication operations.
- * When JWT migration to Express happens, ONLY this file changes.
- * All hooks and services call this — never supabase.auth directly.
- */
-
-import { supabase } from "../supabaseClient";
+// src/services/auth.service.ts
 
 export const authService = {
-  async getSession() {
-    const { data } = await supabase.auth.getSession();
-    return data.session ?? null;
+  getToken(): string | null {
+    return localStorage.getItem("token");
   },
 
-  async getUser() {
-    const { data } = await supabase.auth.getUser();
-    return data.user ?? null;
+  setToken(token: string) {
+    localStorage.setItem("token", token);
   },
 
-  /** Returns the bearer token for future Express API / Edge Function calls */
-  async getToken(): Promise<string | null> {
-    const session = await this.getSession();
-    return session?.access_token ?? null;
+  getUser() {
+    const user = localStorage.getItem("user");
+
+    if (!user) return null;
+
+    try {
+      return JSON.parse(user);
+    } catch {
+      return null;
+    }
+  },
+
+  setUser(user: any) {
+    localStorage.setItem("user", JSON.stringify(user));
+  },
+
+  logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  },
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem("token");
+  },
+
+  async login(email: string, password: string) {
+    const API_URL = import.meta.env.VITE_API_URL;
+
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Login failed");
+    }
+
+    this.setToken(data.token);
+    this.setUser(data.user);
+
+    return data;
+  },
+
+  async register(name: string, email: string, password: string) {
+    const API_URL = import.meta.env.VITE_API_URL;
+
+    const res = await fetch(`${API_URL}/api/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Registration failed");
+    }
+
+    this.setToken(data.token);
+    this.setUser(data.user);
+
+    return data;
   },
 };

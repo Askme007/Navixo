@@ -13,6 +13,8 @@ import conversationsRoutes from "./src/routes/conversations.js";
 import roadmapGenerateRoute from "./src/routes/roadmapGenerate.js";
 import { processRoadmap } from "./src/routes/roadmapWorker.js";
 import messagesRoute from "./src/routes/messages.js";
+import cookieParser from "cookie-parser";
+import authRoutes from "./src/routes/auth.js";
 
 const app = express();
 
@@ -45,6 +47,9 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
 
 // health check
 app.get("/health", (_req, res) => {
@@ -67,6 +72,7 @@ setInterval(async () => {
   }
 }, 4000);
 
+app.use("/api/auth", authRoutes);
 app.use("/api/stream", authenticate, chatStreamRoute);
 app.use("/api/conversations", authenticate, conversationsRoutes);
 app.use("/api/roadmap", authenticate, roadmapGenerateRoute);
