@@ -13,8 +13,13 @@ import conversationsRoutes from "./src/routes/conversations.js";
 import roadmapGenerateRoute from "./src/routes/roadmapGenerate.js";
 import { processRoadmap } from "./src/routes/roadmapWorker.js";
 import messagesRoute from "./src/routes/messages.js";
+<<<<<<< HEAD
 import cookieParser from "cookie-parser";
 import authRoutes from "./src/routes/auth.js";
+=======
+import progressRoute from "./src/routes/progress.js";
+import tasksRoute from "./src/routes/tasks.js";
+>>>>>>> task-generator-merge
 
 const app = express();
 
@@ -73,10 +78,13 @@ setInterval(async () => {
 }, 4000);
 
 app.use("/api/auth", authRoutes);
+
+app.use("/api/tasks", authenticate, tasksRoute);
 app.use("/api/stream", authenticate, chatStreamRoute);
 app.use("/api/conversations", authenticate, conversationsRoutes);
 app.use("/api/roadmap", authenticate, roadmapGenerateRoute);
 app.use("/api/messages", authenticate, messagesRoute);
+app.use("/api/progress", authenticate, progressRoute);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
