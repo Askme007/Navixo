@@ -1,62 +1,95 @@
-import express from "express";
-import { supabase } from "../supabaseClient.js";
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import authenticateToken from '../middleware/auth.js';
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
-router.get("/history", async (req, res) => {
+// GET /api/progress - Fetch aggregated user progress and metrics
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Fetch the 30 NEWEST days of execution history
-    const { data, error } = await supabase
-      .from("execution_history")
-      .select("date, completion_rate, mode_at_time, streak_at_time")
-      .eq("user_id", userId)
-      .order("date", { ascending: false }) // 👈 FIX: Descending order grabs the latest records
-      .limit(30);
+    // Execute Prisma queries in parallel using your updated schema models
+    const [
+      roadmaps,
+      dailyTasks,
+      executionHistory,
+      leetcodeProfile,
+      codeforcesProfile
+    ] = await Promise.all([
+      prisma.userRoadmap.findMany({
+        where: { userId },
+        include: { steps: true }
+      }),
+      prisma.dailyTask.findMany({
+        where: { userId }
+      }),
+      prisma.executionHistory.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 50
+      }),
+      prisma.leetcodeProfile.findUnique({
+        where: { userId }
+      }),
+      prisma.codeforcesProfile.findUnique({
+        where: { userId }
+      })
+    ]);
 
-    if (error) throw error;
-
-    // If no data exists, generate a safe zero-state response
-    if (!data || data.length === 0) {
-      return res.json({
-        metrics: { currentStreak: 0, longestStreak: 0, avgCompletion: 0 },
-        trend: [],
-        isEmpty: true,
-      });
-    }
-
-    // 👈 FIX: Reverse the array so the chart displays left-to-right (past to present)
-    const chronologicalData = data.reverse();
-
-    // Calculate metrics based on the properly sorted array
-    const currentStreak =
-      chronologicalData[chronologicalData.length - 1]?.streak_at_time || 0;
-    const longestStreak = Math.max(
-      ...chronologicalData.map((d) => d.streak_at_time || 0),
-    );
-    const avgCompletion =
-      chronologicalData.reduce(
-        (acc, curr) => acc + Number(curr.completion_rate),
-        0,
-      ) / chronologicalData.length;
-
-    res.json({
-      metrics: {
-        currentStreak,
-        longestStreak,
-        avgCompletion: Number(avgCompletion.toFixed(1)),
-      },
-      trend: chronologicalData.map((d) => ({
-        date: d.date,
-        completionRate: Number(d.completion_rate),
-        mode: d.mode_at_time,
-      })),
-      isEmpty: false,
+    // Calculate dynamic progress metrics for the frontend
+    const totalRoadmaps = roadmaps.length;
+    const completedRoadmaps = roadmaps.filter(r => r.generationStatus === 'completed').length;
+    
+    // Calculate step-level completion
+    let totalSteps = 0;
+    let completedSteps = 0;
+    roadmaps.forEach(roadmap => {
+      if (roadmap.steps) {
+        totalSteps += roadmap.steps.length;
+        completedSteps += roadmap.steps.filter(s => s.status === 'completed' || s.status === 'done').length;
+      }
     });
-  } catch (err) {
-    console.error("Progress fetch error:", err);
-    res.status(500).json({ error: "Failed to retrieve execution telemetry." });
+
+    const roadmapProgressPercentage = totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
+
+    // Calculate Task Metrics (Based on DailyTask records)
+    const totalTasks = dailyTasks.length;
+    const completedTasks = dailyTasks.length; 
+    const taskProgressPercentage = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+    // Construct the final payload mirroring what the frontend expects
+    const progressData = {
+      overview: {
+        roadmapProgressPercentage,
+        taskProgressPercentage,
+        totalRoadmaps,
+        completedRoadmaps,
+        totalTasks,
+        completedTasks
+      },
+      platforms: {
+        leetcode: leetcodeProfile ? {
+          solved: leetcodeProfile.solved || 0,
+          easy: leetcodeProfile.easy || 0,
+          medium: leetcodeProfile.medium || 0,
+          hard: leetcodeProfile.hard || 0
+        } : null,
+        codeforces: codeforcesProfile ? {
+          rating: codeforcesProfile.rating || 0,
+          rank: codeforcesProfile.rank || 'Unrated',
+          maxRating: codeforcesProfile.maxRating || 0
+        } : null
+      },
+      recentActivity: executionHistory
+    };
+
+    return res.status(200).json(progressData);
+
+  } catch (error) {
+    console.error('[Progress API] Error fetching progress metrics:', error);
+    return res.status(500).json({ error: 'Failed to fetch progress metrics.' });
   }
 });
 

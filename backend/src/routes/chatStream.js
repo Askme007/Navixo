@@ -1,133 +1,109 @@
-// backend\src\routes\chatStream.js
-import express from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { supabase } from "../supabaseClient.js";
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import authenticateToken from '../middleware/auth.js'; 
 
 const router = express.Router();
+const prisma = new PrismaClient();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Role Mapper
-const mapRoleToGemini = (dbRole) => {
-  const role = dbRole?.toLowerCase();
-  if (role === "user") return "user";
-  if (role === "assistant" || role === "model") return "model";
-  return "user";
-};
-
-// -------------------------------------
-// 🔥 SECURE STREAMING ENDPOINT (POST)
-// -------------------------------------
-router.post("/", async (req, res) => {
+// POST /api/chatStream
+router.post('/', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id; // 🔐 REAL AUTHENTICATED USER
+    const userId = req.user.id;
+    
     const { conversationId, message } = req.body;
 
     if (!conversationId || !message) {
-      return res
-        .status(400)
-        .json({ error: "conversationId and message required" });
+      return res.status(400).json({ error: 'Conversation ID and message are required.' });
     }
 
-    // -----------------------------------------------
-    // 🔐 1. Verify that conversation belongs to user
-    // -----------------------------------------------
-    const { data: convo, error: convoErr } = await supabase
-      .from("conversations")
-      .select("id, user_id")
-      .eq("id", conversationId)
-      .single();
+    const convId = conversationId; 
 
-    if (convoErr || !convo) {
-      return res.status(404).json({ error: "Conversation not found" });
+    // 1. Verify user owns the conversation
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: convId }
+    });
+
+    if (!conversation || conversation.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized or invalid conversation.' });
     }
 
-    if (convo.user_id !== userId) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized conversation access" });
-    }
+    // 2. Save the User's message to the database
+    await prisma.message.create({
+      data: {
+        conversationId: convId,
+        role: 'user',
+        content: message 
+      }
+    });
 
-    // -----------------------------------------------
-    // 🔐 2. Fetch conversation history
-    // -----------------------------------------------
-    const { data: history, error: histErr } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
+    // 3. Update conversation's updatedAt timestamp
+    await prisma.conversation.update({
+      where: { id: convId },
+      data: { updatedAt: new Date() }
+    });
 
-    if (histErr) {
-      console.error("History Fetch Error:", histErr);
-      return res.status(500).json({ error: "Failed to fetch history" });
-    }
+    // 4. Retrieve conversation history for context
+    const history = await prisma.message.findMany({
+      where: { conversationId: convId },
+      orderBy: { createdAt: 'asc' },
+      take: 20
+    });
 
-    const pastMessages = history.map((m) => ({
-      role: mapRoleToGemini(m.role),
-      parts: [{ text: m.content }],
+    // Format history for Gemini API
+    const formattedHistory = history.map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
     }));
 
-    // -----------------------------------------------
-    // Save user message immediately
-    // -----------------------------------------------
-    await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      user_id: userId,
-      role: "user",
-      content: message,
+    // 5. Initialize Gemini Model and Chat Session
+    // FIX: Bumped deprecated 'gemini-1.5-pro' to the current 'gemini-2.5-pro' model
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });// or 'gemini-1.5-flash'
+    
+    const chat = model.startChat({
+      history: formattedHistory.slice(0, -1), 
     });
 
-    // Prepare Gemini model
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite",
-    });
+    // 6. Setup Server-Sent Events (SSE) Headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
-    const contents = [
-      ...pastMessages,
-      { role: "user", parts: [{ text: message }] },
-    ];
+    // 7. Request Streaming Content from Gemini
+    const result = await chat.sendMessageStream(message);
 
-    // -----------------------------------------------
-    // SSE STREAM START
-    // -----------------------------------------------
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("Connection", "keep-alive");
+    let fullAiResponse = '';
 
-    const result = await model.generateContentStream({ contents });
-
-    let aiResponse = "";
-
+    // 8. Stream the chunks to the client
     for await (const chunk of result.stream) {
-      let token = chunk.text ? chunk.text() : "";
-
-      // Fallback in rare cases
-      if (!token && chunk.candidates?.length) {
-        const parts = chunk.candidates[0]?.content?.parts;
-        parts?.forEach((p) => p.text && (token += p.text));
-      }
-
-      if (!token) continue;
-
-      aiResponse += token;
-      res.write(`data: ${JSON.stringify({ token })}\n\n`);
+      const chunkText = chunk.text();
+      fullAiResponse += chunkText;
+      
+      res.write(`data: ${JSON.stringify({ token: chunkText })}\n\n`);
     }
 
-    // -----------------------------------------------
-    // Save AI response
-    // -----------------------------------------------
-    await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      user_id: userId,
-      role: "assistant",
-      content: aiResponse,
+    // 9. Streaming finished, send done signal
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+    // 10. Save the complete AI response to the database
+    await prisma.message.create({
+      data: {
+        conversationId: convId,
+        role: 'assistant',
+        content: fullAiResponse
+      }
     });
 
-    res.write("data: [DONE]\n\n");
-    res.end();
-  } catch (err) {
-    console.error("STREAM ERROR:", err);
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-    res.end();
+  } catch (error) {
+    console.error('Chat stream error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to process chat stream.' });
+    } else {
+      res.write(`data: ${JSON.stringify({ token: '\n\n**[AI Connection Error]**' })}\n\n`);
+      res.end();
+    }
   }
 });
 
