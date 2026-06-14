@@ -4,7 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { NavixoLogo } from "../NavixoLogo";
-import { supabase } from "../../supabaseClient";
+
+import { authService } from "../../services/auth.service";
 import {
   ArrowRight,
   CheckCircle2,
@@ -88,23 +89,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setHasSession(!!data.session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setHasSession(!!session);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  setHasSession(authService.isAuthenticated());
+}, []);
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({
@@ -113,9 +99,13 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     });
   };
 
-  const primaryAction = hasSession
-    ? () => navigate("/dashboard")
-    : onGetStarted;
+  const primaryAction = () => {
+  if (authService.isAuthenticated()) {
+    navigate("/dashboard");
+  } else {
+    onGetStarted();
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#0B0B0F] text-white">

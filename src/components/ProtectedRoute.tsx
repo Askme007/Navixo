@@ -1,34 +1,21 @@
-//src\components\ProtectedRoute.tsx
+// src/components/ProtectedRoute.tsx
+
 import { Navigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import { useEffect, useState } from "react";
+import { ReactNode } from "react";
+import { authService } from "../services/auth.service";
+
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
 
 export default function ProtectedRoute({
   children,
-}: {
-  children: JSX.Element;
-}) {
-  const [checking, setChecking] = useState(true);
-  const [isAuth, setIsAuth] = useState(false);
+}: ProtectedRouteProps) {
+  const isAuthenticated = authService.isAuthenticated();
 
-  useEffect(() => {
-    async function checkAuth() {
-      const { data } = await supabase.auth.getSession();
-      setIsAuth(!!data.session);
-      setChecking(false);
-    }
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
 
-    checkAuth();
-  }, []);
-
-  if (checking)
-    return (
-      <div className="text-white flex justify-center items-center h-screen">
-        Loading...
-      </div>
-    );
-
-  if (!isAuth) return <Navigate to="/auth" replace />;
-
-  return children;
+  return <>{children}</>;
 }

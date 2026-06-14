@@ -4,11 +4,18 @@
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "../supabaseClient.js";
-
+import { processRoadmap } from "./roadmapWorker.js";
 const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-router.post("/generate", async (req, res) => {
+import authenticate from "../middleware/auth.js";
+
+router.post(
+  "/generate",
+  authenticate,
+  async (req, res) => {  
+  console.log("GENERATE API HIT");
+  console.log("TIME =", new Date().toISOString());
   const userId = req.user.id;
   const { career } = req.body;
 
@@ -25,7 +32,12 @@ router.post("/generate", async (req, res) => {
 
   if (error) return res.status(500).json({ error: "Init failed" });
 
-  res.json({ roadmapId: data.id });
-});
+  processRoadmap(data.id);
+
+    res.json({
+      roadmapId: data.id,
+    });
+}
+);
 
 export default router;

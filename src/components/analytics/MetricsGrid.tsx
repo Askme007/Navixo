@@ -5,7 +5,8 @@ import { Skeleton } from "../ui/skeleton";
 interface MetricsProps {
   metrics: {
     currentStreak: number;
-    longestStreak: number;
+    longestStreak?: number;
+    maxStreak?: number;
     avgCompletion: number;
   } | null;
   loading: boolean;
@@ -27,7 +28,7 @@ export function MetricsGrid({ metrics, loading }: MetricsProps) {
 
   const data = metrics || {
     currentStreak: 0,
-    longestStreak: 0,
+    maxStreak: 0,
     avgCompletion: 0,
   };
 
@@ -59,7 +60,7 @@ export function MetricsGrid({ metrics, loading }: MetricsProps) {
               Max Streak
             </p>
             <p className="text-2xl font-bold text-white mt-0.5">
-              {data.longestStreak} Days
+              {data.maxStreak || data.longestStreak || 0} Days
             </p>
           </div>
         </CardContent>

@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model codeforces_profiles {
+  id                BigInt    @id @default(autoincrement())
+  user_id           String?   @unique @db.Uuid
+  username          String
+  rating            Int?
+  max_rating        Int?
+  rank              String?
+  contests          Int?
+  last_synced_at    DateTime? @default(now()) @db.Timestamptz(6)
+  first_name        String?
+  last_name         String?
+  avatar_url        String?
+  title_photo_url   String?
+  max_rank          String?
+  contribution      Int?      @default(0)
+  organization      String?
+  country           String?
+  registration_time BigInt?
+  last_online_time  BigInt?
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model conversations {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?    @db.Uuid
+  title      String?
+  created_at DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime?  @default(now()) @db.Timestamptz(6)
+  profiles   profiles?  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  messages   messages[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model leetcode_profiles {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @unique(map: "unique_leetcode_user") @db.Uuid
+  username    String
+  solved      Int?      @default(0)
+  easy        Int?      @default(0)
+  medium      Int?      @default(0)
+  hard        Int?      @default(0)
+  ranking     Int?
+  last_synced DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model messages {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String?        @db.Uuid
+  role            String?
+  content         String?
+  meta            Json?
+  created_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  user_id         String?        @db.Uuid
+  conversations   conversations? @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles        profiles?      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model platform_stats {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String    @db.Uuid
+  platform       String
+  handle         String
+  rating         Int?
+  solved_total   Int?      @default(0)
+  solved_easy    Int?      @default(0)
+  solved_medium  Int?      @default(0)
+  solved_hard    Int?      @default(0)
+  contests       Int?      @default(0)
+  last_synced_at DateTime? @default(now()) @db.Timestamptz(6)
+  raw_json       Json?
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@unique([user_id, platform])
+  @@index([user_id], map: "idx_platform_stats_user")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  id                   String            @id @db.Uuid
+  user_id              String?           @unique @db.Uuid
+
+  full_name            String?
+  city                 String?
+  age                  Int?
+  onboarding           Json?
+  created_at           DateTime?         @default(now()) @db.Timestamptz(6)
+  onboarding_completed Boolean?         @default(false)
+
+  conversations        conversations[]
+  messages             messages[]
+  roadmaps             roadmaps[]
+  user_embeddings      user_embeddings[]
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model roadmap_steps {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roadmap_id     String?          @db.Uuid
+  step_order     Int?
+  title          String?
+  description    String?
+  level          String?
+  duration       String?
+  mentor_tip     String?
+  status         String?          @default("not-started")
+  user_roadmaps  user_roadmaps?   @relation(fields: [roadmap_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  step_resources step_resources[]
+
+  @@unique([roadmap_id, step_order], map: "unique_step_order")
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model roadmaps {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  title      String?
+  data       Json?
+  visibility String?   @default("private")
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  profiles   profiles? @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model skill_assessments {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String?   @db.Uuid
+  career_goal    String
+  skill          String
+  user_score     Int
+  expected_score Int
+  gap            Int
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model skill_gap_results {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  skill      String?
+  score      Int?
+  gap_level  String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model step_resources {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  step_id       String?        @db.Uuid
+  type          String?
+  title         String?
+  provider      String?
+  url           String?
+  roadmap_steps roadmap_steps? @relation(fields: [step_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_embeddings {
+  id           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String?                @db.Uuid
+  doc_id       String?
+  embedding    Unsupported("vector")?
+  text_snippet String?
+  created_at   DateTime?              @default(now()) @db.Timestamptz(6)
+  profiles     profiles?              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_roadmaps {
+  id                     String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                String?         @db.Uuid
+  title                  String
+  career_goal            String?
+  created_at             DateTime?       @default(now()) @db.Timestamptz(6)
+  generation_status      String?         @default("pending")
+  generation_error       String?
+  generation_started_at  DateTime?       @db.Timestamptz(6)
+  generation_finished_at DateTime?       @db.Timestamptz(6)
+  roadmap_steps          roadmap_steps[]
+
+  @@schema("public")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  passwordHash  String?
+  provider      String   @default("local")
+
+  createdAt     DateTime @default(now())
+
+  refreshTokens RefreshToken[]
+  oauthAccounts OAuthAccount[]
+
+  @@schema("public")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  userId     String
+
+  expiresAt  DateTime
+  revoked    Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@schema("public")
+}
+
+model OAuthAccount {
+  id                String @id @default(uuid())
+  userId            String
+
+  provider          String
+  providerAccountId String
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+
+  @@schema("public")
+}

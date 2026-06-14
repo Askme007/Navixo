@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import { authService } from "../../services/auth.service";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -32,41 +32,43 @@ export function OnboardingPage({
   }, []);
 
   const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
+  e?.preventDefault();
 
-    try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError) throw authError;
+  setIsSubmitting(true);
+  setError(null);
 
-      if (user) {
-        // Update the profile with the JSONB onboarding data
-        const { error: dbError } = await supabase
-          .from("profiles")
-          .update({
-            onboarding_completed: true,
-            onboarding: formData,
-          })
-          .eq("id", user.id);
+  try {
+    const token = authService.getToken();
 
-        if (dbError) {
-          console.error("Database Update Error:", dbError);
-          throw new Error(dbError.message);
-        }
-      }
-
-      navigate("/dashboard", { replace: true });
-    } catch (err: any) {
-      console.error("Submission failed:", err);
-      setError(err.message || "Failed to save your setup. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+    if (!token) {
+      throw new Error("Not authenticated");
     }
-  };
+
+    const API_URL = import.meta.env.VITE_API_URL;
+
+    const res = await fetch(`${API_URL}/api/profile/onboarding`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to save onboarding");
+    }
+
+    navigate("/dashboard", { replace: true });
+  } catch (err: any) {
+    console.error(err);
+    setError(err.message || "Failed to save onboarding");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#000000] text-white p-6 md:py-12">
