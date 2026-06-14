@@ -38,11 +38,9 @@ export function ChatbotPage({
   );
   const [error, setError] = useState<string | null>(null);
 
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Track the ref to bypass reactive state intersection loops
   const currentConvIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -98,8 +96,9 @@ export function ChatbotPage({
   }, [initialMessage, fromRoadmap]);
 
   useEffect(() => {
-    if (scrollRef.current)
+    if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages, isThinking, error]);
 
   const loadChat = async (id: string, token?: string) => {
@@ -111,13 +110,11 @@ export function ChatbotPage({
     }
 
     setConvId(id);
-
     currentConvIdRef.current = id;
 
     navigate(`/chat?id=${id}`, {
       replace: true,
     });
-
 
     const res = await fetch(
       `${API_URL}/api/messages/${id}`,
@@ -218,7 +215,6 @@ export function ChatbotPage({
         }
 
         currentConvIdRef.current = activeId;
-
         setConvId(activeId);
 
         navigate(`/chat?id=${activeId}`, {
@@ -262,9 +258,7 @@ export function ChatbotPage({
 
       if (!streamRes.ok) {
         const text = await streamRes.text();
-
         console.error("STREAM ERROR:", text);
-
         throw new Error(
           `Stream failed (${streamRes.status})`
         );
@@ -274,11 +268,9 @@ export function ChatbotPage({
       setIsStreaming(true);
 
       const reader = streamRes.body!.getReader();
-
       const decoder = new TextDecoder();
 
       let aiText = "";
-
       const msgId = Date.now().toString();
 
       setStreamingMessageId(msgId);
@@ -304,7 +296,6 @@ export function ChatbotPage({
         });
 
         const lines = buffer.split("\n");
-
         buffer = lines.pop() || "";
 
         for (const line of lines) {
@@ -316,7 +307,6 @@ export function ChatbotPage({
 
           try {
             const parsed = JSON.parse(payload);
-
             aiText += parsed.token || "";
 
             setMessages((prev) =>
@@ -336,7 +326,6 @@ export function ChatbotPage({
       }
     } catch (err: any) {
       console.error("HANDLE SEND ERROR:", err);
-
       setError(err.message || "Unknown error");
     } finally {
       setIsThinking(false);
@@ -346,9 +335,10 @@ export function ChatbotPage({
   };
 
   return (
-    <div className="h-screen bg-[#05030a] text-white flex flex-col overflow-hidden font-sans">
+    <div className="fixed inset-0 h-screen w-screen bg-[#05030a] text-white flex flex-col overflow-hidden font-sans">
+      
       {/* COHERENT NAVIXO SYSTEM HEADER */}
-      <div className="sticky top-0 z-20 border-b border-purple-500/10 bg-[#06040d]/90 backdrop-blur-xl shrink-0">
+      <div className="w-full border-b border-purple-500/10 bg-[#06040d]/90 backdrop-blur-xl shrink-0">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-2">
             <ChatHistorySidebar
@@ -383,28 +373,48 @@ export function ChatbotPage({
         </div>
       </div>
 
-      {/* COMPILATION LOG / CHAT CONTENT CONTAINER */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto w-full custom-scrollbar bg-[#05030a]"
-      >
-        <ChatMessageList
-          messages={messages}
-          isThinking={isThinking}
-          isStreaming={isStreaming}
-          streamingMessageId={streamingMessageId}
-          error={error}
-        />
-      </div>
+      {/* CORE FRAME LAYOUT AREA WITH FLEX DEFENSE */}
+      {/* OPTIMIZATION: Added min-h-0 to explicitly prevent child content from extending panel height */}
+      <div className="flex-1 flex w-full min-h-0 overflow-hidden relative">
+        
+        {/* COMPILATION LOG / CHAT CONTENT CONTAINER */}
+        <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden relative">
+          
+          {/* OPTIMIZATION: Forced strict scrolling boundaries directly onto this div wrapper */}
+          <div
+            ref={scrollRef}
+            className="flex-1 w-full custom-scrollbar bg-[#05030a] pb-4"
+            style={{ 
+              overflowY: 'auto', 
+              overflowX: 'hidden',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* OPTIMIZATION: Wrapped inner log list with a custom structure to enforce scaling boundaries */}
+            <div className="w-full h-auto flex-1">
+              <ChatMessageList
+                messages={messages}
+                isThinking={isThinking}
+                isStreaming={isStreaming}
+                streamingMessageId={streamingMessageId}
+                error={error}
+              />
+            </div>
+          </div>
 
-      {/* SECURE SUB-SYSTEM INPUT ANCHOR */}
-      <div className="shrink-0 bg-[#05030a] border-t border-purple-500/10 w-full flex justify-center px-4">
-        <ChatPromptBar
-          input={input}
-          setInput={setInput}
-          onSend={handleSend}
-          disabled={isThinking || isStreaming}
-        />
+          {/* SECURE SUB-SYSTEM INPUT ANCHOR */}
+          <div className="shrink-0 bg-[#05030a] border-t border-purple-500/10 w-full flex justify-center px-4 py-4">
+            <ChatPromptBar
+              input={input}
+              setInput={setInput}
+              onSend={handleSend}
+              disabled={isThinking || isStreaming}
+            />
+          </div>
+        </div>
+        
       </div>
     </div>
   );

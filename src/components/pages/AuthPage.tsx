@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-
+import { useGoogleLogin } from '@react-oauth/google';
 interface AuthPageProps {
   onAuth: (name: string) => void;
   onBack: () => void;
@@ -23,9 +23,46 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
   const [success, setSuccess] = useState("");
 
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Make sure this is declared near the top of your component
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setLoading(true);
+        setError("");
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:3001";
+        
+        const res = await fetch(`${baseUrl}/api/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: tokenResponse.access_token })
+        });
+
+        const data = await res.json();
+        
+        if (data.token) {
+          authService.setToken(data.token);
+          onAuth(data.user?.email || "Google User"); 
+          
+          // --- ADD THIS LINE TO FORCE THE REDIRECT ---
+          navigate("/dashboard"); 
+          
+        } else {
+          setError(data.error || "Failed to retrieve authentication token.");
+        }
+      } catch (err) {
+        console.error("Google auth error:", err);
+        setError("Network error during Google authentication.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => setError("Google popup closed or failed."),
+  });
+
 
   // Local Auth Listener for Email/Password Sign In
   useEffect(() => {
@@ -113,9 +150,6 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
     }
   };
 
-  const handleGoogle = () => {
-    setError("Google login disabled during JWT migration.");
-  };
 
   return (
     <div className="min-h-screen bg-[#0B0B0F] text-white">
@@ -341,7 +375,7 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={handleGoogle}
+              onClick={() => loginWithGoogle()}
               disabled={loading}
               className="h-12 w-full flex items-center justify-center gap-3 rounded-2xl border-white/10 bg-transparent text-white hover:bg-white/5"
             >

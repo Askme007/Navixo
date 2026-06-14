@@ -28,7 +28,7 @@ export function ExecutionChart({
     );
   }
 
-  if (!data || data.length === 0) {
+  if (!data || data.length < 2) {
     return (
       <Card className="bg-[#0F1117] border-[#2f2f2f] rounded-3xl h-[300px] flex flex-col items-center justify-center shadow-[0_0_40px_rgba(0,0,0,0.35)] mb-6">
         <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">

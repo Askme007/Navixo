@@ -1,6 +1,19 @@
 // src/services/auth.service.ts
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  provider?: string;
+}
+
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const authService = {
+  /* =========================
+     TOKEN
+  ========================= */
+
   getToken(): string | null {
     return localStorage.getItem("token");
   },
@@ -9,7 +22,11 @@ export const authService = {
     localStorage.setItem("token", token);
   },
 
-  getUser() {
+  /* =========================
+     USER
+  ========================= */
+
+  getUser(): User | null {
     const user = localStorage.getItem("user");
 
     if (!user) return null;
@@ -21,8 +38,16 @@ export const authService = {
     }
   },
 
-  setUser(user: any) {
+  setUser(user: User) {
     localStorage.setItem("user", JSON.stringify(user));
+  },
+
+  /* =========================
+     AUTH STATE
+  ========================= */
+
+  isAuthenticated(): boolean {
+    return !!this.getToken();
   },
 
   logout() {
@@ -30,13 +55,11 @@ export const authService = {
     localStorage.removeItem("user");
   },
 
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem("token");
-  },
+  /* =========================
+     LOGIN
+  ========================= */
 
   async login(email: string, password: string) {
-    const API_URL = import.meta.env.VITE_API_URL;
-
     const res = await fetch(`${API_URL}/api/auth/login`, {
       method: "POST",
       headers: {
@@ -57,12 +80,18 @@ export const authService = {
     this.setToken(data.token);
     this.setUser(data.user);
 
-    return data;
+    return data.user;
   },
 
-  async register(name: string, email: string, password: string) {
-    const API_URL = import.meta.env.VITE_API_URL;
+  /* =========================
+     REGISTER
+  ========================= */
 
+  async register(
+    name: string,
+    email: string,
+    password: string
+  ) {
     const res = await fetch(`${API_URL}/api/auth/register`, {
       method: "POST",
       headers: {
@@ -84,6 +113,6 @@ export const authService = {
     this.setToken(data.token);
     this.setUser(data.user);
 
-    return data;
+    return data.user;
   },
 };

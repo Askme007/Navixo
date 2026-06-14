@@ -9,7 +9,6 @@ import { OnboardingPage } from "./components/pages/OnboardingPage";
 import { Dashboard } from "./components/pages/Dashboard";
 import { ChatbotPage } from "./components/pages/ChatbotPage";
 import { RoadmapPage } from "./components/pages/RoadmapPage";
-import { AuthCallback } from "./components/pages/AuthCallback";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import { authService } from "./services/auth.service";
@@ -17,34 +16,38 @@ import { authService } from "./services/auth.service";
 export default function App() {
   const navigate = useNavigate();
 
-  // 👇 REAL AUTH USER (from Supabase)
   const [user, setUser] = useState<any>(null);
   const [userName, setUserName] = useState("");
 
-  const [initialMessage, setInitialMessage] = useState<string | undefined>();
+  const [initialMessage, setInitialMessage] = useState<string>();
   const [fromRoadmap, setFromRoadmap] = useState(false);
 
   useEffect(() => {
-    const storedUser = authService.getUser();
+    const currentUser = authService.getUser();
 
-    if (storedUser) {
-      setUser(storedUser);
-      setUserName(storedUser.name || "");
+    if (currentUser) {
+      setUser(currentUser);
+      setUserName(currentUser.name);
     }
   }, []);
 
-  // Handle login/signup from AuthPage
-  const handleAuth = (name: string) => {
+  const handleAuth = () => {
     const currentUser = authService.getUser();
 
+    if (!currentUser) return;
+
     setUser(currentUser);
-    setUserName(name);
+    setUserName(currentUser.name);
+
+    navigate("/dashboard");
   };
 
   const handleLogout = () => {
     authService.logout();
+
     setUser(null);
     setUserName("");
+
     navigate("/");
   };
 
@@ -52,15 +55,22 @@ export default function App() {
     <Routes>
       <Route
         path="/"
-        element={<LandingPage onGetStarted={() => navigate("/auth")} />}
+        element={
+          <LandingPage
+            onGetStarted={() => navigate("/auth")}
+          />
+        }
       />
 
       <Route
         path="/auth"
-        element={<AuthPage onAuth={handleAuth} onBack={() => navigate("/")} />}
+        element={
+          <AuthPage
+            onAuth={handleAuth}
+            onBack={() => navigate("/")}
+          />
+        }
       />
-
-      <Route path="/auth/callback" element={<AuthCallback />} />
 
       <Route
         path="/onboarding"
@@ -81,7 +91,7 @@ export default function App() {
             <Dashboard
               userName={userName}
               onLogout={handleLogout}
-              onNavigate={(p) => navigate("/" + p)}
+              onNavigate={(path) => navigate("/" + path)}
             />
           </ProtectedRoute>
         }
@@ -92,11 +102,11 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ChatbotPage
-            userName={userName}
-            onBack={() => navigate("/dashboard")}
-            initialMessage={initialMessage}
-            fromRoadmap={fromRoadmap}
-          />
+              userName={userName}
+              onBack={() => navigate("/dashboard")}
+              initialMessage={initialMessage}
+              fromRoadmap={fromRoadmap}
+            />
           </ProtectedRoute>
         }
       />
@@ -109,8 +119,8 @@ export default function App() {
               userName={userName}
               onBack={() => navigate("/dashboard")}
               onLogout={handleLogout}
-              onNavigateToChat={(msg) => {
-                setInitialMessage(msg);
+              onNavigateToChat={(message) => {
+                setInitialMessage(message);
                 setFromRoadmap(true);
                 navigate("/chat");
               }}
@@ -119,7 +129,10 @@ export default function App() {
         }
       />
 
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
     </Routes>
   );
 }

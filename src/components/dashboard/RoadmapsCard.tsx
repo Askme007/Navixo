@@ -1,20 +1,21 @@
 // src\components\dashboard\RoadmapsCard.tsx
 
-import { Map, ChevronRight, Plus } from "lucide-react";
+import { Map, ChevronRight, Plus, X } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { SavedRoadmap } from "../../hooks/useDashboard";
-
 interface RoadmapsCardProps {
   roadmaps: SavedRoadmap[];
   onOpenRoadmap: (id: string) => void;
   onGenerateRoadmap: () => void;
+  onDeleteRoadmap: (id: string) => void;
 }
 
 export function RoadmapsCard({
   roadmaps,
   onOpenRoadmap,
   onGenerateRoadmap,
+  onDeleteRoadmap,
 }: RoadmapsCardProps) {
   return (
     <Card className="bg-[#13151B]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-full flex flex-col">
@@ -59,19 +60,33 @@ export function RoadmapsCard({
                 <div className="flex items-center gap-2">
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                      rm.generation_status === "completed"
+                      rm.generationStatus === "completed" 
                         ? "bg-green-500/10 text-green-400"
                         : "bg-yellow-500/10 text-yellow-400"
                     }`}
                   >
-                    {rm.generation_status}
+                    {rm.generationStatus} 
                   </span>
                   <span className="text-[10px] text-white/30">
-                    {new Date(rm.created_at).toLocaleDateString()}
+                    {rm.createdAt ? new Date(rm.createdAt).toLocaleDateString() : 'Just now'} 
                   </span>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-white/60 shrink-0" />
+              
+              {/* --- NEW DELETE BUTTON AND ARROW WRAPPER --- */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevents opening the roadmap
+                    onDeleteRoadmap(rm.id);
+                  }}
+                  className="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-white/60 shrink-0" />
+              </div>
+
             </button>
           ))
         )}

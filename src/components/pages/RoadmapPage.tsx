@@ -1,6 +1,5 @@
 // src/components/pages/RoadmapPage.tsx
 
-import { supabase } from "../../supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -18,7 +17,6 @@ import {
   Code,
   ChevronDown,
   ChevronUp,
-  Download,
   ExternalLink,
   FileText,
   Lightbulb,
@@ -27,7 +25,6 @@ import {
   MessageSquare,
   PlayCircle,
   Sparkles,
-  TrendingUp,
   Youtube,
 } from "lucide-react";
 import { ShareButton } from "../ShareButton";
@@ -416,97 +413,86 @@ export function RoadmapPage({
 
   const loadLatestRoadmap = useCallback(async () => {
     if (!roadmapId) return;
-    
-    const { data } = await supabase.auth.getUser();
-    
-    const { data: roadmap, error: roadmapError } = await supabase
-      .from("user_roadmaps")
-      .select("*")
-      .eq("id", roadmapId)
-      .single();
 
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
 
+      const response = await fetch(`${API_URL}/api/roadmap/${roadmapId}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (roadmapError || !roadmap) {
-      setGenerationStatus("failed");
-      setRoadmapNodes([]);
-      setExpandedStepId(null);
-      return;
-    }
-    if (roadmap.generation_status === "completed") {
-      setGenerationStatus("completed");
-    }
-    const nextGenerationStatus: GenerationStatus =
-      roadmap.generation_status === "creating" ||
-      roadmap.generation_status === "processing" ||
-      roadmap.generation_status === "completed" ||
-      roadmap.generation_status === "failed"
-        ? roadmap.generation_status
-        : "idle";
+      if (!response.ok) {
+        throw new Error("Failed to load roadmap from backend API");
+      }
 
+      const roadmap = await response.json();
 
-    setGenerationStatus(nextGenerationStatus);
-    console.log(
-      "ROADMAP STATUS =",
-      nextGenerationStatus
-    );
-    setInput(roadmap.title ?? roadmap.career_goal ?? "");
+      if (!roadmap) {
+        setGenerationStatus("failed");
+        setRoadmapNodes([]);
+        setExpandedStepId(null);
+        return;
+      }
 
-    const { data: steps, error: stepsError } = await supabase
-      .from("roadmap_steps")
-      .select("*")
-      .eq("roadmap_id", roadmap.id)
-      .order("step_order");
-    
-    if (stepsError) {
-      console.error("Failed to load roadmap steps:", stepsError);
-      setGenerationStatus("failed");
-      return;
-    }
+      const nextGenerationStatus: GenerationStatus =
+        roadmap.generationStatus === "creating" ||
+        roadmap.generationStatus === "processing" ||
+        roadmap.generationStatus === "completed" ||
+        roadmap.generationStatus === "failed"
+          ? roadmap.generationStatus
+          : "idle";
 
-    if (!steps?.length) {
-      setRoadmapNodes([]);
-      setExpandedStepId(null);
-      return;
-    }
+      setGenerationStatus(nextGenerationStatus);
+      console.log("ROADMAP STATUS =", nextGenerationStatus);
+      setInput(roadmap.title ?? roadmap.careerGoal ?? "");
 
-    const { data: resources, error: resourcesError } = await supabase
-      .from("step_resources")
-      .select("*")
-      .in(
-        "step_id",
-        steps.map((step) => step.id),
-      );
+      const steps = roadmap.steps ?? [];
 
-    
+      if (!steps.length) {
+        setRoadmapNodes([]);
+        setExpandedStepId(null);
+        return;
+      }
 
-    const rebuiltNodes: RoadmapNode[] = steps.map((step) => ({
-      id: step.id,
-      title: step.title ?? "",
-      description: step.description ?? "",
-      duration: step.duration ?? "",
-      level: normalizeLevel(step.level),
-      status: normalizeStatus(step.status),
-      mentorTip: step.mentor_tip ?? "",
-      resources: (resources ?? [])
-        .filter((resource) => resource.step_id === step.id)
-        .map((resource) => ({
+      const rebuiltNodes: RoadmapNode[] = steps.map((step: any) => ({
+        id: step.id,
+        title: step.title ?? "",
+        description: step.description ?? "",
+        duration: step.duration ?? "",
+        level: normalizeLevel(step.level),
+        status: normalizeStatus(step.status),
+        mentorTip: step.mentorTip ?? "",
+        resources: (step.resources ?? []).map((resource: any) => ({
           type: normalizeResourceType(resource.type),
           title: resource.title ?? "",
           provider: resource.provider ?? "",
           url: resource.url ?? "",
         })),
-    }));
-    setRoadmapNodes(rebuiltNodes);
-    useEffect(() => {
-      console.log("ROADMAP NODES CHANGED", roadmapNodes);
-    }, [roadmapNodes]);
-    setExpandedStepId((current) =>
-      current && rebuiltNodes.some((node) => node.id === current)
-        ? current
-        : (rebuiltNodes[0]?.id ?? null),
-    );
-  }, [roadmapId]);
+      }));
+
+      setRoadmapNodes(rebuiltNodes);
+
+      setExpandedStepId((current) =>
+        current && rebuiltNodes.some((node) => node.id === current)
+          ? current
+          : (rebuiltNodes[0]?.id ?? null),
+      );
+    } catch (error) {
+      console.error("Failed to load roadmap details:", error);
+      setGenerationStatus("failed");
+    }
+  }, [roadmapId, API_URL]);
+
+  useEffect(() => {
+    console.log("ROADMAP NODES CHANGED", roadmapNodes);
+  }, [roadmapNodes]);
 
   useEffect(() => {
     setShowPopup(false);
@@ -515,10 +501,13 @@ export function RoadmapPage({
       setGenerationStatus("idle");
       setInput("");
     }
-  }, [roadmapId]); 
+  }, [roadmapId]);
 
   useEffect(() => {
     if (!roadmapId) return;
+
+    // Immediately trigger first fetch
+    loadLatestRoadmap();
 
     const timer = setInterval(async () => {
       await loadLatestRoadmap();
@@ -548,24 +537,20 @@ export function RoadmapPage({
       setGenerationStatus("creating");
 
       const token = authService.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
 
-        if (!token) {
-          throw new Error("Not authenticated");
-        }
-
-        const response = await fetch(
-          `${API_URL}/api/roadmap/generate`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              career: input.trim(),
-            }),
-          }
-        );
+      const response = await fetch(`${API_URL}/api/roadmap/generate`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          career: input.trim(),
+        }),
+      });
 
       const body = await response.json().catch(() => ({}));
 
@@ -579,7 +564,6 @@ export function RoadmapPage({
 
       setGenerationStatus("processing");
       navigate(`/roadmap/${body.roadmapId}`);
-
     } catch (error: any) {
       console.error("Generate failed:", error);
       setGenerationStatus("failed");
@@ -600,92 +584,62 @@ export function RoadmapPage({
     setStatusUpdatingId(stepId);
 
     try {
+      // Optimistic Update
       setRoadmapNodes((prev) =>
         prev.map((node) =>
           node.id === stepId ? { ...node, status: newStatus } : node,
         ),
       );
 
-      const { error } = await supabase
-        .from("roadmap_steps")
-        .update({ status: newStatus })
-        .eq("id", stepId);
+      const token = authService.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
 
-      if (error) {
-        throw error;
+      const response = await fetch(`${API_URL}/api/roadmap/steps/${stepId}/status`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to patch status on Express API.");
       }
     } catch (error) {
       console.error("Failed to update step status:", error);
       await loadLatestRoadmap();
-    } finally {
+    } bits: {
       setStatusUpdatingId(null);
     }
   };
 
   const handleSaveRoadmap = async () => {
-    if (!roadmapNodes.length || generationLocked) return;
+    if (!roadmapId || !roadmapNodes.length || generationLocked) return;
 
     try {
       setIsSaving(true);
-      const user = authService.getUser();
-
-      if (!user) {
+      const token = authService.getToken();
+      if (!token) {
         throw new Error("Not authenticated");
       }
 
-      const { data: roadmap, error: roadmapError } = await supabase
-        .from("user_roadmaps")
-        .insert({
-          user_id: user.id,
-          title: input.trim(),
-          career_goal: input.trim(),
-        })
-        .select()
-        .single();
+      const response = await fetch(`${API_URL}/api/roadmap/${roadmapId}/save`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-      if (roadmapError || !roadmap) {
-        throw roadmapError ?? new Error("Failed to save roadmap");
-      }
+      const body = await response.json().catch(() => ({}));
 
-      for (let index = 0; index < roadmapNodes.length; index += 1) {
-        const node = roadmapNodes[index];
-
-        const { data: step, error: stepError } = await supabase
-          .from("roadmap_steps")
-          .insert({
-            roadmap_id: roadmap.id,
-            step_order: index + 1,
-            title: node.title,
-            description: node.description,
-            level: node.level,
-            duration: node.duration,
-            mentor_tip: node.mentorTip,
-            status: node.status,
-          })
-          .select()
-          .single();
-
-        if (stepError || !step) {
-          throw stepError ?? new Error("Failed to save step");
-        }
-
-        if (node.resources?.length) {
-          const resourceRows = node.resources.map((resource) => ({
-            step_id: step.id,
-            type: resource.type,
-            title: resource.title,
-            provider: resource.provider,
-            url: resource.url,
-          }));
-
-          const { error: resourceError } = await supabase
-            .from("step_resources")
-            .insert(resourceRows);
-
-          if (resourceError) {
-            throw resourceError;
-          }
-        }
+      if (!response.ok) {
+        throw new Error(body?.error || "Failed to save roadmap.");
       }
 
       setShowPopup(true);
@@ -700,10 +654,18 @@ export function RoadmapPage({
   const handleRetry = async () => {
     try {
       if (roadmapId) {
-        await supabase
-          .from("user_roadmaps")
-          .update({ generation_status: "idle" })
-          .eq("id", roadmapId);
+        const token = authService.getToken();
+        if (!token) {
+          throw new Error("Not authenticated");
+        }
+
+        await fetch(`${API_URL}/api/roadmap/${roadmapId}/retry`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
       }
 
       setGenerationStatus("idle");
@@ -734,7 +696,6 @@ export function RoadmapPage({
     navigate("/roadmap", { replace: true });
   };
 
-  
   return (
     <div className="min-h-screen bg-[#0B0B0F] text-white">
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sky-500/5 via-[#0B0B0F] to-violet-500/5" />
@@ -1007,7 +968,7 @@ export function RoadmapPage({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {!roadmapId && hasRoadmap && (
+                  {roadmapId && hasRoadmap && (
                     <SaveRoadmapButton
                       isSaving={isSaving}
                       onClick={handleSaveRoadmap}
