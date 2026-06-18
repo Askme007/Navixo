@@ -110,6 +110,26 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
     );
   }
 
+// ==========================================
+// 📊 Safely handle strict null/undefined checks
+// ==========================================
+
+// 1. Extract values cleanly with nullish coalescing (??) fallbacks
+const trendData = telemetry?.trend || [];
+const currentStreak = telemetry?.currentStreak ?? 0;
+const avgCompletion = telemetry?.avgCompletion ?? 0;
+
+console.log("👉 REAL BACKEND TELEMETRY PAYLOAD:", telemetry);
+
+// 2. Automated Day 1 Fallback using our clean, verified variables
+const safeChartData = trendData.length > 0
+  ? trendData
+  : (currentStreak > 0 || avgCompletion > 0)
+    ? [{ date: new Date().toISOString(), completionRate: avgCompletion }]
+    : [];
+
+console.log("📊 FINAL DATA PASSED TO CHART:", safeChartData);
+
   // --- ACTUAL LOADED STATE ---
   return (
     <div className="min-h-screen bg-[#0B0D12] text-white selection:bg-[#8B5CF6]/30">
@@ -166,9 +186,11 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
                 metrics={telemetry as any}
                 loading={loading}
               />
+              
+              {/* 3. Updated data prop to read our safe parsed array */}
               <ExecutionChart
-                data={telemetry?.trend || []}
-                loading={loading}
+                data={safeChartData}
+                loading={loading} 
               />
             </div>
 

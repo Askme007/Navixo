@@ -54,17 +54,19 @@ model LeetcodeProfile {
 }
 
 model CodeforcesProfile {
-  id               BigInt    @id @default(autoincrement())
-  userId           String?   @unique @map("user_id") @db.Uuid
+  id      String   @id @default(uuid()) @db.Uuid
+  userId  String   @unique @db.Uuid
+  profile profiles @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   username         String
+  firstName        String?
+  lastName         String?
+  avatarUrl        String?
   rating           Int?
   maxRating        Int?      @map("max_rating")
   rank             String?
   contests         Int?
   lastSyncedAt     DateTime? @default(now()) @map("last_synced_at") @db.Timestamptz(6)
-  firstName        String?   @map("first_name")
-  lastName         String?   @map("last_name")
-  avatarUrl        String?   @map("avatar_url")
   titlePhotoUrl    String?   @map("title_photo_url")
   maxRank          String?   @map("max_rank")
   contribution     Int?      @default(0)
@@ -194,7 +196,7 @@ model platform_stats {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model profiles {
-id                   String            @id @default(uuid()) @db.Uuid
+  id                   String            @id @default(uuid()) @db.Uuid
   full_name            String?
   email                String?           @unique
   city                 String?
@@ -207,6 +209,10 @@ id                   String            @id @default(uuid()) @db.Uuid
   messages             Message[]
   roadmaps             roadmaps[]
   user_embeddings      user_embeddings[]
+
+  leetcodeUsername   String?
+  codeforcesUsername String?
+  codeforcesProfile  CodeforcesProfile?
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.

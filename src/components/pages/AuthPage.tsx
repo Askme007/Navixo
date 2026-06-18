@@ -45,14 +45,23 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
         
         if (data.token) {
           authService.setToken(data.token);
-          onAuth(data.user?.email || "Google User"); 
           
-          // --- ADD THIS LINE TO FORCE THE REDIRECT ---
-          navigate("/dashboard"); 
+          // 📍 ADD THIS LINE: Save the user data to local storage!
+          authService.setUser(data.user); 
+          
+          // Set it in the active React state
+          onAuth(data.user?.name || "Google User"); 
+          
+          // Route based on onboarding status
+          if (data.user?.onboardingCompleted) {
+            navigate("/dashboard"); 
+          } else {
+            navigate("/onboarding");
+          }
           
         } else {
           setError(data.error || "Failed to retrieve authentication token.");
-        }
+        } 
       } catch (err) {
         console.error("Google auth error:", err);
         setError("Network error during Google authentication.");

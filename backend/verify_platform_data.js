@@ -1,4 +1,5 @@
-import prisma from "./lib/prisma.js"; // Adjust the path if necessary
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 async function verify() {
   // 1. Get any user from your DB to test
@@ -12,8 +13,7 @@ async function verify() {
   console.log("Testing profile:", user.email);
   
   // 2. Check if the field exists in the data returned by Prisma
-  // If leetcodeUsername is undefined here, it's missing from your schema
-  console.log("LeetCode Username field:", user.leetcodeUsername);
+  console.log("LeetCode Username field:", user.cfUsername);
   
   process.exit();
 }
