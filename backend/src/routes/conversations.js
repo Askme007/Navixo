@@ -1,74 +1,80 @@
-// backend\src\routes\conversations.js
-
-import express from "express";
-import { supabase } from "../supabaseClient.js";
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import authenticateToken from '../middleware/auth.js';
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
-/**
- * POST /api/conversations/create
- * Body: { title?: string }
- * Auth: required (req.user.id from JWT middleware)
- */
-router.post("/create", async (req, res) => {
+// GET /api/conversations/list - List all conversations
+router.get('/list', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id; // 🔐 Secure authenticated user
-    const { title } = req.body || {};
-
-    const finalTitle = title?.trim() || "New Conversation";
-
-    const { data, error } = await supabase
-      .from("conversations")
-      .insert({
-        user_id: userId,
-        title: finalTitle,
-      })
-      .select("id, title, created_at")
-      .single();
-
-    if (error) {
-      console.error("Conversation create error:", error);
-
-      return res.status(500).json({
-        message: error.message,
-        details: error,
-      });
-    }
-
-    return res.json({
-      conversationId: data.id,
-      title: data.title,
-      created_at: data.created_at,
+    const userId = req.user.id;
+    
+    const conversations = await prisma.conversation.findMany({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
     });
-  } catch (err) {
-    console.error("Unexpected create conversation error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    
+    // FIX: Wrapped the array in a 'conversations' key to match ChatbotPage.tsx lines 57 and 220
+    return res.status(200).json({
+      conversations: conversations
+    });
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    return res.status(500).json({ error: 'Failed to fetch conversations.' });
   }
 });
 
-/**
- * GET /api/conversations/list
- * Auth: required — user ID is from JWT
- */
-router.get("/list", async (req, res) => {
+// POST /api/conversations/create - Create a new conversation
+router.post('/create', authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id; // 🔐 real user from backend
+    const userId = req.user.id;
+    const { title } = req.body;
 
-    const { data, error } = await supabase
-      .from("conversations")
-      .select("id, title, created_at, updated_at")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
+    const newConversation = await prisma.conversation.create({
+      data: {
+        userId,
+        title: title || 'New Conversation',
+      },
+    });
 
-    if (error) {
-      console.error("Conversation list error:", error);
-      return res.status(500).json({ error: "Failed to fetch conversations" });
+    return res.status(201).json({
+      ...newConversation,
+      conversationId: newConversation.id 
+    });
+  } catch (error) {
+    console.error('Error creating conversation:', error);
+    return res.status(500).json({ error: 'Failed to create conversation.' });
+  }
+});
+
+// DELETE /api/conversations/:id - Delete a conversation
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const convId = req.params.id; 
+
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: convId },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found.' });
     }
 
-    return res.json({ conversations: data || [] });
-  } catch (err) {
-    console.error("Unexpected list conversation error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    if (conversation.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
+
+    await prisma.$transaction([
+      prisma.message.deleteMany({ where: { conversationId: convId } }),
+      prisma.conversation.delete({ where: { id: convId } })
+    ]);
+
+    return res.status(200).json({ message: 'Conversation deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    return res.status(500).json({ error: 'Failed to delete conversation.' });
   }
 });
 

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient";
 import { useDashboard } from "../../hooks/useDashboard";
 import { DashboardHeader } from "../dashboard/DashboardHeader";
 import { DashboardSidebar } from "../dashboard/DashboardSidebar";
@@ -10,11 +9,11 @@ import { RoadmapsCard } from "../dashboard/RoadmapsCard";
 import { CompletedStepsCard } from "../dashboard/CompletedStepsCard";
 import { LeetcodeCard } from "../dashboard/LeetcodeCard";
 import { CodeforcesCard } from "../dashboard/CodeforcesCard";
+import { authService } from "../../services/auth.service";
 
 // Analytics & UI Imports
 import { MetricsGrid } from "../analytics/MetricsGrid";
 import { ExecutionChart } from "../analytics/ExecutionChart";
-import { AlertCircle } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import { TaskCheckinCard } from "../dashboard/TaskCheckinCard";
 
@@ -28,12 +27,7 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
-  // --- New Analytics Telemetry State ---
-  const [telemetryData, setTelemetryData] = useState<any>(null);
-  const [telemetryLoading, setTelemetryLoading] = useState(true);
-  const [telemetryError, setTelemetryError] = useState<string | null>(null);
-
-  // --- Existing Dashboard Data Hook ---
+  // --- Dashboard Data Hook ---
   const {
     activeRoadmap,
     savedRoadmaps,
@@ -41,41 +35,10 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
     activity,
     focusSteps,
     loading,
+    telemetry, // Pulled directly from our unified hook now!
+    refreshDashboard, // Used to refresh data after a task check-in
+    deleteRoadmap
   } = useDashboard();
-
-  // Extract this function so we can pass it down to the Check-in Card
-  const fetchTelemetry = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error("Unauthorized");
-
-      // Inside fetchTelemetry in Dashboard.tsx
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL ||
-        import.meta.env.VITE_API_URL ||
-        "http://localhost:3001";
-
-      const res = await fetch(`${baseUrl}/api/progress/history`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (!res.ok) throw new Error("Failed to sync execution telemetry.");
-
-      const data = await res.json();
-      setTelemetryData(data);
-    } catch (err: any) {
-      setTelemetryError(err.message);
-    } finally {
-      setTelemetryLoading(false);
-    }
-  };
-
-  // Run on mount
-  useEffect(() => {
-    fetchTelemetry();
-  }, []);
 
   // --- DEFENSIVE UX: HIGH-FIDELITY SKELETON SCREEN ---
   if (loading) {
@@ -147,6 +110,26 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
     );
   }
 
+// ==========================================
+// 📊 Safely handle strict null/undefined checks
+// ==========================================
+
+// 1. Extract values cleanly with nullish coalescing (??) fallbacks
+const trendData = telemetry?.trend || [];
+const currentStreak = telemetry?.currentStreak ?? 0;
+const avgCompletion = telemetry?.avgCompletion ?? 0;
+
+console.log("👉 REAL BACKEND TELEMETRY PAYLOAD:", telemetry);
+
+// 2. Automated Day 1 Fallback using our clean, verified variables
+const safeChartData = trendData.length > 0
+  ? trendData
+  : (currentStreak > 0 || avgCompletion > 0)
+    ? [{ date: new Date().toISOString(), completionRate: avgCompletion }]
+    : [];
+
+console.log("📊 FINAL DATA PASSED TO CHART:", safeChartData);
+
   // --- ACTUAL LOADED STATE ---
   return (
     <div className="min-h-screen bg-[#0B0D12] text-white selection:bg-[#8B5CF6]/30">
@@ -193,26 +176,21 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
               />
             </div>
 
-            {/* --- NEW EXECUTION TELEMETRY SECTION --- */}
+            {/* --- EXECUTION TELEMETRY SECTION --- */}
             <div className="pt-2">
               <p className="text-white/30 text-xs tracking-[0.2em] font-bold mb-4 ml-1">
                 EXECUTION TELEMETRY
               </p>
 
-              {telemetryError && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl flex items-center gap-3 mb-6">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium">{telemetryError}</span>
-                </div>
-              )}
-
               <MetricsGrid
-                metrics={telemetryData?.metrics}
-                loading={telemetryLoading}
+                metrics={telemetry as any}
+                loading={loading}
               />
+              
+              {/* 3. Updated data prop to read our safe parsed array */}
               <ExecutionChart
-                data={telemetryData?.trend}
-                loading={telemetryLoading}
+                data={safeChartData}
+                loading={loading} 
               />
             </div>
 
@@ -230,13 +208,14 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
                   roadmaps={savedRoadmaps}
                   onOpenRoadmap={(id) => onNavigate(`roadmap/${id}`)}
                   onGenerateRoadmap={() => onNavigate("roadmap")}
+                  onDeleteRoadmap={deleteRoadmap}
                 />
                 <CompletedStepsCard completedSteps={activity} />
               </div>
 
-              {/* This is the new Interactive Terminal */}
+              {/* Interactive Terminal */}
               <div className="lg:col-span-1">
-                <TaskCheckinCard onCheckinComplete={fetchTelemetry} />
+                <TaskCheckinCard onCheckinComplete={refreshDashboard} />
               </div>
             </div>
           </div>

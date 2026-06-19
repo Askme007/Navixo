@@ -5,11 +5,13 @@ import { Save, Loader2 } from "lucide-react";
 interface SaveRoadmapButtonProps {
   isSaving: boolean;
   onClick: () => void;
+  className?: string;
 }
 
 export function SaveRoadmapButton({
   isSaving,
   onClick,
+  className = "",
 }: SaveRoadmapButtonProps) {
   return (
     <Button

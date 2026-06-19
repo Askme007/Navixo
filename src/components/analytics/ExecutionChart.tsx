@@ -110,6 +110,8 @@ export function ExecutionChart({
                 strokeWidth={3}
                 fillOpacity={1}
                 fill="url(#colorRate)"
+                isAnimationActive={false} // Helps single points render instantly
+                dot={{ r: 4, fill: "#8B5CF6", strokeWidth: 2 }} // ADD THIS: Forces the single dot to appear!
                 activeDot={{
                   r: 6,
                   fill: "#8B5CF6",

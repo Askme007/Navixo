@@ -1,13 +1,8 @@
-/**
- * useDashboard.ts
- *
- * Owns all dashboard data state: roadmap, progress, activity, focus steps.
- * All Supabase queries delegated to dashboardService.
- * Auth delegated to authService.
- */
+// src/hooks/useDashboard.ts
+
 import { useState, useEffect, useCallback } from "react";
-import { authService } from "../services/auth.service";
 import { dashboardService } from "../services/dashboard.service";
+import { authService } from "../services/auth.service";
 
 export type RoadmapStatus =
   | "idle"
@@ -16,12 +11,13 @@ export type RoadmapStatus =
   | "completed"
   | "failed";
 
+// Replace lines 12-18 with this:
 export interface SavedRoadmap {
   id: string;
   title: string;
-  career_goal: string;
-  generation_status: string;
-  created_at: string;
+  careerGoal: string; // Changed from career_goal
+  generationStatus: string; // Changed from generation_status
+  createdAt: string; // Changed from created_at
 }
 
 export interface ActivityItem {
@@ -43,6 +39,23 @@ export interface FocusStep {
   status: string;
 }
 
+interface TelemetryData {
+  currentStreak: number;
+  maxStreak: number;
+  avgCompletion: number;
+  trend?: any[]; 
+}
+
+interface DashboardResponse {
+  latestRoadmap: SavedRoadmap | null;
+  savedRoadmaps: SavedRoadmap[];
+  progress: { percentage: number };
+  activity: ActivityItem[];
+  focusSteps: FocusStep[];
+  telemetry?: TelemetryData; // <--- Add this
+}
+
+// Update UseDashboardReturn
 interface UseDashboardReturn {
   activeRoadmap: SavedRoadmap | null;
   roadmapStatus: RoadmapStatus;
@@ -51,72 +64,104 @@ interface UseDashboardReturn {
   activity: ActivityItem[];
   focusSteps: FocusStep[];
   loading: boolean;
+  telemetry: TelemetryData | null;
   refreshDashboard: () => Promise<void>;
+  deleteRoadmap: (id: string) => Promise<void>;
 }
 
 export function useDashboard(): UseDashboardReturn {
-  const [activeRoadmap, setActiveRoadmap] = useState<SavedRoadmap | null>(null);
-  const [roadmapStatus, setRoadmapStatus] = useState<RoadmapStatus>("idle");
-  const [savedRoadmaps, setSavedRoadmaps] = useState<SavedRoadmap[]>([]);
-  const [progressValue, setProgressValue] = useState(0);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [focusSteps, setFocusSteps] = useState<FocusStep[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activeRoadmap, setActiveRoadmap] =
+    useState<SavedRoadmap | null>(null);
+
+  const [roadmapStatus, setRoadmapStatus] =
+    useState<RoadmapStatus>("idle");
+
+  const [savedRoadmaps, setSavedRoadmaps] =
+    useState<SavedRoadmap[]>([]);
+
+  const [progressValue, setProgressValue] =
+    useState(0);
+
+  const [activity, setActivity] =
+    useState<ActivityItem[]>([]);
+
+
+  const [focusSteps, setFocusSteps] =
+    useState<FocusStep[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
 
   const refreshDashboard = useCallback(async () => {
-    const user = await authService.getUser();
-    if (!user) return;
+    try {
+      setLoading(true);
 
-    const userId = user.id;
+      const data: DashboardResponse =
+        await dashboardService.getDashboard();
 
-    const [{ data: rm }, { data: rms }] = await Promise.all([
-      dashboardService.getLatestRoadmap(userId),
-      dashboardService.getSavedRoadmaps(userId),
-    ]);
+      setActiveRoadmap(data.latestRoadmap);
 
-    if (rm) {
-      setActiveRoadmap(rm as SavedRoadmap);
-      setRoadmapStatus((rm.generation_status ?? "idle") as RoadmapStatus);
-    } else {
+      setSavedRoadmaps(data.savedRoadmaps ?? []);
+
+      setProgressValue(
+        data.progress?.percentage ?? 0
+      );
+
+      setActivity(data.activity ?? []);
+
+      setFocusSteps(data.focusSteps ?? []);
+      setTelemetry(data.telemetry ?? null);
+
+      setRoadmapStatus(
+        (data.latestRoadmap?.generationStatus ??
+          "idle") as RoadmapStatus
+      );
+    } catch (err) {
+      console.error("Dashboard load failed:", err);
+
       setActiveRoadmap(null);
-      setRoadmapStatus("idle");
-    }
-
-    setSavedRoadmaps(
-      ((rms ?? []) as SavedRoadmap[]).filter(
-        (r) => typeof r.id === "string" && r.title?.length > 0,
-      ),
-    );
-
-    if (rm?.generation_status === "completed") {
-      const { data: steps } = await dashboardService.getRoadmapProgress(userId);
-      const done = steps?.filter((s: any) => s.status === "done").length ?? 0;
-      const total = steps?.length ?? 0;
-      setProgressValue(total > 0 ? Math.round((done / total) * 100) : 0);
-    } else {
+      setSavedRoadmaps([]);
       setProgressValue(0);
+      setActivity([]);
+      setFocusSteps([]);
+      setRoadmapStatus("idle");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    const loadSecondary = async () => {
-      const user = await authService.getUser();
-      if (!user) return;
-      const [{ data: activityData }, stepsData] = await Promise.all([
-        dashboardService.getRecentActivity(user.id),
-        dashboardService.getCurrentFocusSteps(user.id),
-      ]);
-      setActivity((activityData ?? []) as ActivityItem[]);
-      setFocusSteps(stepsData as FocusStep[]);
-    };
-    loadSecondary();
   }, []);
 
   useEffect(() => {
     refreshDashboard();
   }, [refreshDashboard]);
+
+  // Don't forget to import authService at the top if it isn't there!
+
+// Replace your deleteRoadmap function with this:
+  const deleteRoadmap = async (id: string) => {
+    try {
+      // Optimistically remove it from UI
+      setSavedRoadmaps(prev => prev.filter(rm => rm.id !== id));
+      if (activeRoadmap?.id === id) setActiveRoadmap(null);
+
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:3001";
+      
+      // FIXED: Changed "roadmaps" to "roadmap" and used authService
+      const res = await fetch(`${baseUrl}/api/roadmap/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authService.getToken()}`
+        }
+      });
+
+      if (!res.ok) throw new Error("Failed to delete roadmap");
+      
+    } catch (err) {
+      console.error("Delete failed:", err);
+      refreshDashboard(); // Re-fetch if it failed
+    }
+  };
 
   return {
     activeRoadmap,
@@ -126,6 +171,8 @@ export function useDashboard(): UseDashboardReturn {
     activity,
     focusSteps,
     loading,
+    telemetry,
     refreshDashboard,
+    deleteRoadmap,
   };
 }

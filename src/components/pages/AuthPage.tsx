@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import { authService } from "../../services/auth.service";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
-
+import { useGoogleLogin } from '@react-oauth/google';
 interface AuthPageProps {
   onAuth: (name: string) => void;
   onBack: () => void;
@@ -23,144 +23,142 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
   const [success, setSuccess] = useState("");
 
-  const navigate = useNavigate();
-  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+  const navigate = useNavigate(); // Make sure this is declared near the top of your component
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setLoading(true);
+        setError("");
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:3001";
+        
+        const res = await fetch(`${baseUrl}/api/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: tokenResponse.access_token })
+        });
+
+        const data = await res.json();
+        
+        if (data.token) {
+          authService.setToken(data.token);
+          
+          // 📍 ADD THIS LINE: Save the user data to local storage!
+          authService.setUser(data.user); 
+          
+          // Set it in the active React state
+          onAuth(data.user?.name || "Google User"); 
+          
+          // Route based on onboarding status
+          if (data.user?.onboardingCompleted) {
+            navigate("/dashboard"); 
+          } else {
+            navigate("/onboarding");
+          }
+          
+        } else {
+          setError(data.error || "Failed to retrieve authentication token.");
+        } 
+      } catch (err) {
+        console.error("Google auth error:", err);
+        setError("Network error during Google authentication.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: () => setError("Google popup closed or failed."),
+  });
+
 
   // Local Auth Listener for Email/Password Sign In
   useEffect(() => {
     window.scrollTo(0, 0);
-    let isNavigating = false;
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Only process SIGNED_IN events locally. OAuth uses the callback route.
-      if (event === "SIGNED_IN" && session?.user && !isNavigating) {
-        isNavigating = true;
-
-        try {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("onboarding_completed, full_name")
-            .eq("id", session.user.id)
-            .maybeSingle();
-
-          const fullName =
-            profile?.full_name ||
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.name ||
-            session.user.email?.split("@")[0] ||
-            "User";
-
-          onAuth(fullName);
-
-          if (profile?.onboarding_completed) {
-            navigate("/dashboard", { replace: true });
-          } else {
-            if (!profile) {
-              await supabase.from("profiles").upsert(
-                {
-                  id: session.user.id,
-                  full_name: fullName,
-                  onboarding_completed: false,
-                },
-                { onConflict: "id" },
-              );
-            }
-            navigate("/onboarding", { replace: true });
-          }
-        } catch (err) {
-          console.error("Auth routing error:", err);
-          setLoading(false);
-          isNavigating = false;
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate, onAuth]);
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setLoading(true);
     setError("");
-    setSuccess("");
 
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        },
+      );
 
-    if (loginError) {
-      setError(loginError.message || "Unable to sign in.");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      authService.setToken(data.token);
+      authService.setUser(data.user);
+
+      onAuth(data.user.name);
+
+      navigate("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
-      if (!name.trim()) throw new Error("Full name is required.");
-
-      const { data, error: signupError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: { full_name: name.trim() },
-          emailRedirectTo: `${apiUrl}/auth/callback`,
-        },
-      });
-
-      if (signupError) throw signupError;
-
-      if (!data?.user?.identities?.length) {
-        throw new Error("This email is already registered. Please sign in.");
-      }
-
-      if (data.user) {
-        await supabase.from("profiles").upsert(
-          {
-            id: data.user.id,
-            full_name: name.trim(),
-            onboarding_completed: false,
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          { onConflict: "id" },
-        );
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Registration failed");
       }
 
-      setSuccess("Verification email sent. Check your inbox.");
-      setLoading(false);
+      authService.setToken(data.token);
+      authService.setUser(data.user);
+
+      onAuth(data.user.name);
+
+      navigate("/onboarding");
     } catch (err: any) {
-      setError(err?.message || "Unable to sign up.");
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogle = async () => {
-    setLoading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const { error: googleError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (googleError) throw googleError;
-    } catch (err: any) {
-      setError(err?.message || "Google sign-in failed.");
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#0B0B0F] text-white">
@@ -386,7 +384,7 @@ export function AuthPage({ onAuth, onBack }: AuthPageProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={handleGoogle}
+              onClick={() => loginWithGoogle()}
               disabled={loading}
               className="h-12 w-full flex items-center justify-center gap-3 rounded-2xl border-white/10 bg-transparent text-white hover:bg-white/5"
             >

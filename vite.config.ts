@@ -63,5 +63,9 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    headers: {
+      // Change this to unsafe-none
+      "Cross-Origin-Opener-Policy": "unsafe-none",
+    },
   },
 });

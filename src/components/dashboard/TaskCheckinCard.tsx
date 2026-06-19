@@ -11,8 +11,8 @@ import {
   Plus,
   Save,
 } from "lucide-react";
-import { supabase } from "../../supabaseClient";
 import { Skeleton } from "../ui/skeleton";
+import { authService } from "../../services/auth.service";
 
 interface Task {
   id: string;
@@ -51,13 +51,10 @@ export function TaskCheckinCard({
   useEffect(() => {
     const fetchTodayTasks = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) return;
+        const token = authService.getToken();
 
         const res = await fetch(`${baseUrl}/api/tasks/today`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${authService.getToken()}` ,},
         });
 
         const json = await res.json();
@@ -79,14 +76,12 @@ export function TaskCheckinCard({
     setTasks(updatedTasks);
     setSaveState("saving");
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const token = authService.getToken();
       await fetch(`${baseUrl}/api/tasks/today`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${authService.getToken()}`,
         },
         body: JSON.stringify({ tasks: updatedTasks }),
       });
@@ -147,16 +142,13 @@ export function TaskCheckinCard({
     setErrorMessage("");
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) throw new Error("Unauthorized");
+      const token = authService.getToken();
 
       const res = await fetch(`${baseUrl}/api/tasks/checkin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${authService.getToken()}`,
         },
         body: JSON.stringify({
           completionRate: calculatedRate,

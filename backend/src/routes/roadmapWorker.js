@@ -1,32 +1,69 @@
-// backend\src\routes\roadmapWorker.js
-
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { supabase } from "../supabaseClient.js";
+import { prisma } from "../config/prisma.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+function extractJson(text) {
+  if (!text) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  let cleaned = text.replace(/```json|```/gi, "").trim();
+
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  return JSON.parse(cleaned);
+}
+
 export async function processRoadmap(roadmapId) {
-  console.log("⚙️ Processing roadmap:", roadmapId);
+  console.log(`⚙️ Processing roadmap ${roadmapId}`);
 
   try {
-    await supabase
-      .from("user_roadmaps")
-      .update({
-        generation_status: "processing",
-        generation_started_at: new Date().toISOString(),
-        generation_error: null,
-      })
-      .eq("id", roadmapId);
+    //-------------------------------------------------------
+    // Mark roadmap as processing
+    //-------------------------------------------------------
 
-    const { data: roadmap, error: roadmapErr } = await supabase
-      .from("user_roadmaps")
-      .select("career_goal")
-      .eq("id", roadmapId)
-      .single();
+    await prisma.userRoadmap.update({
+      where: {
+        id: roadmapId,
+      },
+      data: {
+        generationStatus: "processing",
+        generationStartedAt: new Date(),
+        generationError: null,
+      },
+    });
 
-    if (roadmapErr || !roadmap) throw new Error("Roadmap not found");
+    //-------------------------------------------------------
+    // Fetch roadmap
+    //-------------------------------------------------------
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const roadmap = await prisma.userRoadmap.findUnique({
+      where: {
+        id: roadmapId,
+      },
+      select: {
+        id: true,
+        careerGoal: true,
+      },
+    });
+
+    if (!roadmap) {
+      throw new Error("Roadmap not found.");
+    }
+
+    //-------------------------------------------------------
+    // Gemini
+    //-------------------------------------------------------
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3.1-flash-lite",
+    });
 
     const prompt = `
 Return STRICT JSON only.
@@ -40,80 +77,163 @@ Return STRICT JSON only.
       "duration": "4 weeks",
       "mentor_tip": "",
       "resources": [
-        { "type": "youtube", "title": "", "provider": "", "url": "" }
+        {
+          "type":"youtube",
+          "title":"",
+          "provider":"",
+          "url":""
+        }
       ]
     }
   ]
 }
 
-Career: "${roadmap.career_goal}"
+Career: "${roadmap.careerGoal}"
 `;
 
-    const result = await model.generateContent(prompt);
+    let result = null;
 
-    let text = result.response.text();
-    text = text.replace(/```json|```/g, "").trim();
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`Gemini Attempt ${attempt}`);
 
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      console.error("❌ JSON PARSE FAILED:", text);
-      throw e;
-    }
+        result = await model.generateContent(prompt);
 
-    for (let i = 0; i < parsed.steps.length; i++) {
-      const step = parsed.steps[i];
+        break;
+      } catch (err) {
+        if (err.status === 503 && attempt < 3) {
+          console.log("Gemini busy. Retrying...");
 
-      const { data: stepRow, error: stepErr } = await supabase
-        .from("roadmap_steps")
-        .insert({
-          roadmap_id: roadmapId,
-          step_order: i + 1,
-          title: step.title,
-          description: step.description,
-          level: step.level,
-          duration: step.duration,
-          mentor_tip: step.mentor_tip,
-          status: "not-started",
-        })
-        .select()
-        .single();
+          await new Promise((resolve) =>
+            setTimeout(resolve, 3000 * attempt)
+          );
 
-      if (stepErr) throw stepErr;
+          continue;
+        }
 
-      if (step.resources?.length) {
-        const rows = step.resources.map((r) => ({
-          step_id: stepRow.id,
-          type: r.type,
-          title: r.title,
-          provider: r.provider,
-          url: r.url,
-        }));
-
-        await supabase.from("step_resources").insert(rows);
+        throw err;
       }
     }
 
-    await supabase
-      .from("user_roadmaps")
-      .update({
-        generation_status: "completed",
-        generation_finished_at: new Date().toISOString(),
-      })
-      .eq("id", roadmapId);
+    if (!result) {
+      throw new Error("Gemini failed after multiple retries.");
+    }
 
-    console.log("✅ Roadmap completed:", roadmapId);
+    //-------------------------------------------------------
+    // Parse response
+    //-------------------------------------------------------
+
+    const responseText = result.response.text();
+
+    let parsed;
+
+    try {
+      parsed = extractJson(responseText);
+    } catch (err) {
+      console.error(responseText);
+      throw new Error("Gemini returned invalid JSON.");
+    }
+
+    if (!parsed.steps || !Array.isArray(parsed.steps)) {
+      throw new Error("Invalid roadmap format.");
+    }
+
+    //-------------------------------------------------------
+    // Remove old roadmap (if retry)
+    //-------------------------------------------------------
+
+    await prisma.stepResource.deleteMany({
+      where: {
+        step: {
+          roadmapId,
+        },
+      },
+    });
+
+    await prisma.roadmapStep.deleteMany({
+      where: {
+        roadmapId,
+      },
+    });
+
+    //-------------------------------------------------------
+    // Insert roadmap
+    //-------------------------------------------------------
+
+    await prisma.$transaction(async (tx) => {
+      for (let index = 0; index < parsed.steps.length; index++) {
+        const step = parsed.steps[index];
+
+        const createdStep = await tx.roadmapStep.create({
+          data: {
+            roadmapId,
+
+            stepOrder: index + 1,
+
+            title: step.title ?? "",
+
+            description: step.description ?? "",
+
+            level: step.level ?? "beginner",
+
+            duration: step.duration ?? "",
+
+            mentorTip: step.mentor_tip ?? "",
+
+            status: "not-started",
+          },
+        });
+
+        if (
+          Array.isArray(step.resources) &&
+          step.resources.length > 0
+        ) {
+          await tx.stepResource.createMany({
+            data: step.resources.map((resource) => ({
+              stepId: createdStep.id,
+
+              type: resource.type ?? "docs",
+
+              title: resource.title ?? "",
+
+              provider: resource.provider ?? "",
+
+              url: resource.url ?? "",
+            })),
+          });
+        }
+      }
+
+      await tx.userRoadmap.update({
+        where: {
+          id: roadmapId,
+        },
+        data: {
+          generationStatus: "completed",
+          generationFinishedAt: new Date(),
+        },
+      });
+    });
+
+    console.log(`✅ Roadmap completed ${roadmapId}`);
   } catch (err) {
-    await supabase
-      .from("user_roadmaps")
-      .update({
-        generation_status: "failed",
-        generation_finished_at: new Date().toISOString(),
-        generation_error: err.message || "Unknown worker failure",
-      })
-      .eq("id", roadmapId);
+    console.error("ROADMAP WORKER ERROR");
 
-    console.error("ROADMAP WORKER FAILED:", err);
+    console.error(err);
+
+    await prisma.userRoadmap.update({
+      where: {
+        id: roadmapId,
+      },
+      data: {
+        generationStatus: "failed",
+
+        generationFinishedAt: new Date(),
+
+        generationError:
+          err?.message ||
+          "Roadmap generation failed.",
+      },
+    });
   }
 }
