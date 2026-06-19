@@ -1,0 +1,12 @@
+warning: in the working copy of 'src/components/DownloadPDFButton.tsx', LF will be replaced by CRLF the next time Git touches it
+ backend/src/middleware/auth.js                     |  10 [32m+[m[31m-[m
+ backend/src/routes/roadmapGenerate.js              |  19 [32m+[m[31m-[m
+ backend/src/routes/roadmapWorker.js                |  22 [32m+[m[31m-[m
+ backend/src/services/roadmapWorker.js              |  16 [32m+[m[31m-[m
+ .../src/components/DownloadPDFButton.tsx           |  34 [32m+[m[31m-[m
+ .../src/components/pages/ChatbotPage.tsx           | 576 [32m++++++++++++++[m[31m-------[m
+ src/components/DownloadPDFButton.tsx               |   2 [32m+[m[31m-[m
+ src/components/pages/ChatbotPage.tsx               | 114 [32m++[m[31m--[m
+ src/components/pages/Dashboard.tsx                 |  47 [32m+[m[31m-[m
+ src/components/pages/RoadmapPage.tsx               | 254 [32m++++[m[31m-----[m
+ 10 files changed, 642 insertions(+), 452 deletions(-)

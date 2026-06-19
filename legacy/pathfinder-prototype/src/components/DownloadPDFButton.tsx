@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
-import { Download, X, FileDown } from 'lucide-react';
-import { Button } from './ui/button';
+import { useState, useRef, useEffect } from "react";
+import { Download, X, FileDown } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface DownloadPDFButtonProps {
   className?: string;
 }
 
-export function DownloadPDFButton({ className = '' }: DownloadPDFButtonProps) {
+export function DownloadPDFButton({ className = "" }: DownloadPDFButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -23,8 +23,8 @@ export function DownloadPDFButton({ className = '' }: DownloadPDFButtonProps) {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSuccessPopup]);
 
   const handleDownloadClick = () => {
@@ -40,11 +40,11 @@ export function DownloadPDFButton({ className = '' }: DownloadPDFButtonProps) {
 
   const handleFinalDownload = () => {
     // Simulate actual PDF download
-    console.log('Downloading PDF...');
-    
+    // console.log('Downloading PDF...');
+
     // Close the popup
     setShowSuccessPopup(false);
-    
+
     // In a real implementation, this would trigger the actual PDF download
     // For now, we'll just simulate it
   };
@@ -61,7 +61,7 @@ export function DownloadPDFButton({ className = '' }: DownloadPDFButtonProps) {
         onClick={handleDownloadClick}
         disabled={isLoading}
         className={`gap-1 md:gap-2 border-[#333333] bg-transparent text-white hover:bg-white/5 text-xs md:text-sm flex-1 sm:flex-none transition-colors ${
-          isLoading ? 'opacity-60 cursor-not-allowed' : ''
+          isLoading ? "opacity-60 cursor-not-allowed" : ""
         } ${className}`}
         style={{ fontWeight: 500 }}
       >
@@ -86,7 +86,7 @@ export function DownloadPDFButton({ className = '' }: DownloadPDFButtonProps) {
         <div
           className="fixed inset-0 bg-black/45 z-40"
           style={{
-            animation: 'fadeIn 200ms ease-out',
+            animation: "fadeIn 200ms ease-out",
           }}
           onClick={handleClosePopup}
         />
@@ -98,7 +98,7 @@ export function DownloadPDFButton({ className = '' }: DownloadPDFButtonProps) {
           ref={popupRef}
           className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-[#232323] border border-[#2E2E2E] rounded-xl shadow-2xl z-50 overflow-hidden"
           style={{
-            animation: 'scaleIn 250ms ease-out',
+            animation: "scaleIn 250ms ease-out",
           }}
         >
           <div className="p-6">
@@ -116,12 +116,18 @@ export function DownloadPDFButton({ className = '' }: DownloadPDFButtonProps) {
             </div>
 
             {/* Title */}
-            <h3 className="text-white text-center mb-2" style={{ fontWeight: 600 }}>
+            <h3
+              className="text-white text-center mb-2"
+              style={{ fontWeight: 600 }}
+            >
               Your PDF is Ready
             </h3>
 
             {/* Subtext */}
-            <p className="text-[#BFBFBF] text-center text-sm mb-6" style={{ fontWeight: 500 }}>
+            <p
+              className="text-[#BFBFBF] text-center text-sm mb-6"
+              style={{ fontWeight: 500 }}
+            >
               Click below to download your roadmap summary.
             </p>
 

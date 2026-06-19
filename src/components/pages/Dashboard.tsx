@@ -37,7 +37,7 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
     loading,
     telemetry, // Pulled directly from our unified hook now!
     refreshDashboard, // Used to refresh data after a task check-in
-    deleteRoadmap
+    deleteRoadmap,
   } = useDashboard();
 
   // --- DEFENSIVE UX: HIGH-FIDELITY SKELETON SCREEN ---
@@ -110,25 +110,26 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
     );
   }
 
-// ==========================================
-// 📊 Safely handle strict null/undefined checks
-// ==========================================
+  // ==========================================
+  // 📊 Safely handle strict null/undefined checks
+  // ==========================================
 
-// 1. Extract values cleanly with nullish coalescing (??) fallbacks
-const trendData = telemetry?.trend || [];
-const currentStreak = telemetry?.currentStreak ?? 0;
-const avgCompletion = telemetry?.avgCompletion ?? 0;
+  // 1. Extract values cleanly with nullish coalescing (??) fallbacks
+  const trendData = telemetry?.trend || [];
+  const currentStreak = telemetry?.currentStreak ?? 0;
+  const avgCompletion = telemetry?.avgCompletion ?? 0;
 
-console.log("👉 REAL BACKEND TELEMETRY PAYLOAD:", telemetry);
+  // console.log("👉 REAL BACKEND TELEMETRY PAYLOAD:", telemetry);
 
-// 2. Automated Day 1 Fallback using our clean, verified variables
-const safeChartData = trendData.length > 0
-  ? trendData
-  : (currentStreak > 0 || avgCompletion > 0)
-    ? [{ date: new Date().toISOString(), completionRate: avgCompletion }]
-    : [];
+  // 2. Automated Day 1 Fallback using our clean, verified variables
+  const safeChartData =
+    trendData.length > 0
+      ? trendData
+      : currentStreak > 0 || avgCompletion > 0
+        ? [{ date: new Date().toISOString(), completionRate: avgCompletion }]
+        : [];
 
-console.log("📊 FINAL DATA PASSED TO CHART:", safeChartData);
+  // console.log("📊 FINAL DATA PASSED TO CHART:", safeChartData);
 
   // --- ACTUAL LOADED STATE ---
   return (
@@ -182,16 +183,10 @@ console.log("📊 FINAL DATA PASSED TO CHART:", safeChartData);
                 EXECUTION TELEMETRY
               </p>
 
-              <MetricsGrid
-                metrics={telemetry as any}
-                loading={loading}
-              />
-              
+              <MetricsGrid metrics={telemetry as any} loading={loading} />
+
               {/* 3. Updated data prop to read our safe parsed array */}
-              <ExecutionChart
-                data={safeChartData}
-                loading={loading} 
-              />
+              <ExecutionChart data={safeChartData} loading={loading} />
             </div>
 
             {/* CURRENT FOCUS SECTION */}

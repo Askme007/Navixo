@@ -116,14 +116,11 @@ export function ChatbotPage({
       replace: true,
     });
 
-    const res = await fetch(
-      `${API_URL}/api/messages/${id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      }
-    );
+    const res = await fetch(`${API_URL}/api/messages/${id}`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
 
     const data = await res.json();
 
@@ -132,7 +129,7 @@ export function ChatbotPage({
         id: m.id,
         role: m.role,
         content: m.content,
-      }))
+      })),
     );
   };
 
@@ -180,38 +177,29 @@ export function ChatbotPage({
 
       if (!activeId) {
         const title =
-          userMsg.length > 26
-            ? userMsg.substring(0, 26) + "..."
-            : userMsg;
+          userMsg.length > 26 ? userMsg.substring(0, 26) + "..." : userMsg;
 
-        const createRes = await fetch(
-          `${API_URL}/api/conversations/create`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ title }),
-          }
-        );
+        const createRes = await fetch(`${API_URL}/api/conversations/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title }),
+        });
 
         const createData = await createRes.json();
 
-        console.log("CREATE RESPONSE:", createData);
+        // console.log("CREATE RESPONSE:", createData);
 
         if (!createRes.ok) {
-          throw new Error(
-            createData.error || "Failed to create conversation"
-          );
+          throw new Error(createData.error || "Failed to create conversation");
         }
 
         activeId = createData.conversationId;
 
         if (!activeId) {
-          throw new Error(
-            "Backend returned no conversationId"
-          );
+          throw new Error("Backend returned no conversationId");
         }
 
         currentConvIdRef.current = activeId;
@@ -222,18 +210,15 @@ export function ChatbotPage({
         });
 
         try {
-          const historyRes = await fetch(
-            `${API_URL}/api/conversations/list`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+          const historyRes = await fetch(`${API_URL}/api/conversations/list`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
           const historyData = await historyRes.json();
 
-          console.log("HISTORY RESPONSE:", historyData);
+          // console.log("HISTORY RESPONSE:", historyData);
 
           setHistory(historyData.conversations || []);
         } catch (err) {
@@ -241,27 +226,22 @@ export function ChatbotPage({
         }
       }
 
-      const streamRes = await fetch(
-        `${API_URL}/api/stream`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            conversationId: activeId,
-            message: userMsg,
-          }),
-        }
-      );
+      const streamRes = await fetch(`${API_URL}/api/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          conversationId: activeId,
+          message: userMsg,
+        }),
+      });
 
       if (!streamRes.ok) {
         const text = await streamRes.text();
         console.error("STREAM ERROR:", text);
-        throw new Error(
-          `Stream failed (${streamRes.status})`
-        );
+        throw new Error(`Stream failed (${streamRes.status})`);
       }
 
       setIsThinking(false);
@@ -316,8 +296,8 @@ export function ChatbotPage({
                       ...m,
                       content: aiText,
                     }
-                  : m
-              )
+                  : m,
+              ),
             );
           } catch (e) {
             console.error("Stream parse error", e);
@@ -336,7 +316,6 @@ export function ChatbotPage({
 
   return (
     <div className="fixed inset-0 h-screen w-screen bg-[#05030a] text-white flex flex-col overflow-hidden font-sans">
-      
       {/* COHERENT NAVIXO SYSTEM HEADER */}
       <div className="w-full border-b border-purple-500/10 bg-[#06040d]/90 backdrop-blur-xl shrink-0">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
@@ -376,20 +355,18 @@ export function ChatbotPage({
       {/* CORE FRAME LAYOUT AREA WITH FLEX DEFENSE */}
       {/* OPTIMIZATION: Added min-h-0 to explicitly prevent child content from extending panel height */}
       <div className="flex-1 flex w-full min-h-0 overflow-hidden relative">
-        
         {/* COMPILATION LOG / CHAT CONTENT CONTAINER */}
         <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden relative">
-          
           {/* OPTIMIZATION: Forced strict scrolling boundaries directly onto this div wrapper */}
           <div
             ref={scrollRef}
             className="flex-1 w-full custom-scrollbar bg-[#05030a] pb-4"
-            style={{ 
-              overflowY: 'auto', 
-              overflowX: 'hidden',
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column'
+            style={{
+              overflowY: "auto",
+              overflowX: "hidden",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             {/* OPTIMIZATION: Wrapped inner log list with a custom structure to enforce scaling boundaries */}
@@ -414,7 +391,6 @@ export function ChatbotPage({
             />
           </div>
         </div>
-        
       </div>
     </div>
   );
