@@ -4,7 +4,7 @@
 
 <p><em>Placement preparation is not an information problem. It is an execution problem.</em></p>
 
-<p>Navixo is a placement execution engine that helps engineering students move from planning to consistent execution through<br />personalized roadmaps, progress tracking, coding profile integrations, and structured preparation workflows.</p>
+<p>Navixo is a placement execution engine that helps engineering students move from planning to consistent execution through —<br />personalized roadmaps, progress tracking, coding profile integrations, and structured preparation workflows.</p>
 
 <br />
 
