@@ -230,5 +230,3 @@ Upcoming improvements:
 ## License
 
 This project is currently not licensed for redistribution or commercial use.
-
-```
