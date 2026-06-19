@@ -15,9 +15,9 @@ function extractJson(text) {
 }
 
 export async function processRoadmap(roadmapId) {
-  console.log(`\n========================================`);
-  console.log(`⚙️ PROCESSING ROADMAP ID: ${roadmapId}`);
-  console.log(`========================================`);
+  // console.log(`\n========================================`);
+  // console.log(`⚙️ PROCESSING ROADMAP ID: ${roadmapId}`);
+  // console.log(`========================================`);
 
   try {
     await prisma.userRoadmap.update({
@@ -89,12 +89,12 @@ Respond ONLY with a valid JSON object matching this exact structure:
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        console.log(`-> Gemini API Attempt ${attempt}...`);
+        // console.log(`-> Gemini API Attempt ${attempt}...`);
         result = await model.generateContent(prompt);
         break;
       } catch (err) {
         if (err.status === 503 && attempt < 3) {
-          console.log("Gemini busy. Retrying...");
+          // console.log("Gemini busy. Retrying...");
           await new Promise((resolve) => setTimeout(resolve, 3000 * attempt));
           continue;
         }
@@ -107,9 +107,9 @@ Respond ONLY with a valid JSON object matching this exact structure:
     const responseText = result.response.text();
 
     // --- X-RAY LOGGING ---
-    console.log(`\n--- RAW GEMINI OUTPUT START ---`);
-    console.log(responseText);
-    console.log(`--- RAW GEMINI OUTPUT END ---\n`);
+    // console.log(`\n--- RAW GEMINI OUTPUT START ---`);
+    // console.log(responseText);
+    // console.log(`--- RAW GEMINI OUTPUT END ---\n`);
 
     let parsed;
     try {
@@ -124,7 +124,7 @@ Respond ONLY with a valid JSON object matching this exact structure:
     }
 
     // --- X-RAY LOGGING ---
-    console.log(`✅ SUCCESS: Parsed ${parsed.steps.length} steps from Gemini.`);
+    // console.log(`✅ SUCCESS: Parsed ${parsed.steps.length} steps from Gemini.`);
     parsed.steps.forEach((s, idx) => {
       console.log(
         `   Step ${idx + 1}: ${s.title} | Resources: ${s.resources?.length || 0}`,
@@ -178,8 +178,8 @@ Respond ONLY with a valid JSON object matching this exact structure:
       });
     });
 
-    console.log(`✅ Roadmap fully saved to database: ${roadmapId}`);
-    console.log(`========================================\n`);
+    // console.log(`✅ Roadmap fully saved to database: ${roadmapId}`);
+    // console.log(`========================================\n`);
   } catch (err) {
     console.error("❌ ROADMAP WORKER FATAL ERROR:");
     console.error(err);

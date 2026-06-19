@@ -91,12 +91,12 @@ Respond ONLY with a valid JSON object matching this exact structure:
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      console.log(`Gemini Attempt ${attempt}...`);
+      // console.log(`Gemini Attempt ${attempt}...`);
       result = await model.generateContent(prompt);
       break;
     } catch (err) {
       if (err?.status === 503 && attempt < 3) {
-        console.log("Gemini busy. Retrying...");
+        // console.log("Gemini busy. Retrying...");
         await new Promise((resolve) => setTimeout(resolve, attempt * 3000));
         continue;
       }
@@ -111,9 +111,9 @@ Respond ONLY with a valid JSON object matching this exact structure:
   const responseText = result.response.text();
 
   // 3. X-RAY LOGGING FOR DEBUGGING
-  console.log(`\n--- RAW GEMINI OUTPUT START ---`);
-  console.log(responseText);
-  console.log(`--- RAW GEMINI OUTPUT END ---\n`);
+  // console.log(`\n--- RAW GEMINI OUTPUT START ---`);
+  // console.log(responseText);
+  // console.log(`--- RAW GEMINI OUTPUT END ---\n`);
 
   let parsed;
 
@@ -128,7 +128,7 @@ Respond ONLY with a valid JSON object matching this exact structure:
     throw new Error("Invalid roadmap format.");
   }
 
-  console.log(`✅ SUCCESS: Parsed ${parsed.steps.length} steps from Gemini.`);
+  // console.log(`✅ SUCCESS: Parsed ${parsed.steps.length} steps from Gemini.`);
   return parsed.steps;
 }
 async function replaceRoadmapSteps(tx, roadmapId, steps) {
@@ -188,7 +188,7 @@ async function replaceRoadmapSteps(tx, roadmapId, steps) {
 }
 
 export async function processRoadmap(roadmapId) {
-  console.log(`⚙️ Processing roadmap ${roadmapId}`);
+  // console.log(`⚙️ Processing roadmap ${roadmapId}`);
 
   try {
     await updateRoadmapStatus(roadmapId, "processing");
@@ -230,7 +230,7 @@ export async function processRoadmap(roadmapId) {
       },
     );
 
-    console.log(`✅ Roadmap completed ${roadmapId}`);
+    // console.log(`✅ Roadmap completed ${roadmapId}`);
   } catch (err) {
     console.error("ROADMAP WORKER ERROR");
     console.error(err);
