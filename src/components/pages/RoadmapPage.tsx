@@ -1,5 +1,3 @@
-// src/components/pages/RoadmapPage.tsx
-
 import { useNavigate, useParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
@@ -16,7 +14,6 @@ import {
   Clock,
   Code,
   ChevronDown,
-  ChevronUp,
   ExternalLink,
   FileText,
   Lightbulb,
@@ -214,7 +211,7 @@ function RoadmapStepCard({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-start gap-3 p-4 text-left sm:p-5"
+        className="flex w-full items-start gap-3 p-4 text-left sm:p-5 outline-none focus-visible:bg-white/5 transition-colors"
       >
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-slate-950/70">
           {getStatusIcon(step.status)}
@@ -257,123 +254,129 @@ function RoadmapStepCard({
         </div>
 
         <div className="shrink-0 pt-1 text-slate-400">
-          {expanded ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
+          {/* Animated Chevron: Rotates perfectly based on expanded state */}
+          <ChevronDown
+            className={`h-4 w-4 transition-transform duration-300 ease-in-out ${expanded ? "rotate-180" : "rotate-0"}`}
+          />
         </div>
       </button>
 
-      {expanded && (
-        <CardContent className="border-t border-white/10 p-4 sm:p-5">
-          <div className="space-y-4">
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-[0.18em] text-slate-500">
-                Update status
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {(["not-started", "in-progress", "done"] as const).map(
-                  (status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      disabled={statusUpdating}
-                      onClick={() => onStatusChange(step.id, status)}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                        step.status === status
-                          ? "border-white/20 bg-white/10 text-white"
-                          : "border-white/10 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white"
-                      } disabled:cursor-not-allowed disabled:opacity-50`}
-                    >
-                      {status === "not-started"
-                        ? "Not started"
-                        : status === "in-progress"
-                          ? "In progress"
-                          : "Done"}
-                    </button>
-                  ),
-                )}
-              </div>
-            </div>
-
-            {step.mentorTip && (
-              <div className="rounded-2xl border border-amber-500/15 bg-amber-500/8 p-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-amber-300" />
-                  <span className="text-sm font-medium text-white">
-                    Mentor tip
-                  </span>
-                </div>
-                <p className="text-sm leading-6 text-slate-200">
-                  {step.mentorTip}
+      {/* The Magic Wrapper: Animates from 0 height to 100% height */}
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${
+          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <CardContent className="border-t border-white/10 p-4 sm:p-5">
+            <div className="space-y-4">
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+                  Update status
                 </p>
-              </div>
-            )}
-
-            <div>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <h4 className="text-sm font-medium text-white">Resources</h4>
-                <span className="text-xs text-slate-500">
-                  {resources.length} linked
-                </span>
-              </div>
-
-              {resources.length > 0 ? (
-                <div className="grid gap-2">
-                  {resources.map((resource, resourceIndex) => (
-                    <button
-                      key={`${resource.title}-${resourceIndex}`}
-                      type="button"
-                      onClick={() => {
-                        const query = encodeURIComponent(
-                          `${resource.title} ${resource.provider} ${resource.type}`,
-                        );
-
-                        window.open(
-                          `https://www.google.com/search?q=${query}`,
-                          "_blank",
-                        );
-                      }}
-                      className="flex w-full items-start gap-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-white/20 hover:bg-white/5"
-                    >
-                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
-                        {getResourceIcon(resource.type)}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-white">
-                          {resource.title}
-                        </p>
-                        <p className="truncate text-xs text-slate-400">
-                          {resource.provider}
-                        </p>
-                      </div>
-
-                      <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2">
+                  {(["not-started", "in-progress", "done"] as const).map(
+                    (status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        disabled={statusUpdating}
+                        onClick={() => onStatusChange(step.id, status)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                          step.status === status
+                            ? "border-white/20 bg-white/10 text-white"
+                            : "border-white/10 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white"
+                        } disabled:cursor-not-allowed disabled:opacity-50`}
+                      >
+                        {status === "not-started"
+                          ? "Not started"
+                          : status === "in-progress"
+                            ? "In progress"
+                            : "Done"}
+                      </button>
+                    ),
+                  )}
                 </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
-                  No resources linked yet.
+              </div>
+
+              {step.mentorTip && (
+                <div className="rounded-2xl border border-amber-500/15 bg-amber-500/8 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-amber-300" />
+                    <span className="text-sm font-medium text-white">
+                      Mentor tip
+                    </span>
+                  </div>
+                  <p className="text-sm leading-6 text-slate-200">
+                    {step.mentorTip}
+                  </p>
                 </div>
               )}
-            </div>
 
-            {onAskMentor && (
-              <Button
-                type="button"
-                onClick={onAskMentor}
-                className="w-full rounded-2xl bg-white text-slate-950 hover:bg-slate-200"
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Ask AI Mentor about this step
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      )}
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-medium text-white">Resources</h4>
+                  <span className="text-xs text-slate-500">
+                    {resources.length} linked
+                  </span>
+                </div>
+
+                {resources.length > 0 ? (
+                  <div className="grid gap-2">
+                    {resources.map((resource, resourceIndex) => (
+                      <button
+                        key={`${resource.title}-${resourceIndex}`}
+                        type="button"
+                        onClick={() => {
+                          const query = encodeURIComponent(
+                            `${resource.title} ${resource.provider} ${resource.type}`,
+                          );
+
+                          window.open(
+                            `https://www.google.com/search?q=${query}`,
+                            "_blank",
+                          );
+                        }}
+                        className="flex w-full items-start gap-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-white/20 hover:bg-white/5"
+                      >
+                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
+                          {getResourceIcon(resource.type)}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-white">
+                            {resource.title}
+                          </p>
+                          <p className="truncate text-xs text-slate-400">
+                            {resource.provider}
+                          </p>
+                        </div>
+
+                        <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
+                    No resources linked yet.
+                  </div>
+                )}
+              </div>
+
+              {onAskMentor && (
+                <Button
+                  type="button"
+                  onClick={onAskMentor}
+                  className="w-full rounded-2xl bg-white text-slate-950 hover:bg-slate-200"
+                >
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Ask AI Mentor about this step
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </div>
+      </div>
     </Card>
   );
 }
@@ -450,7 +453,6 @@ export function RoadmapPage({
           : "idle";
 
       setGenerationStatus(nextGenerationStatus);
-      console.log("ROADMAP STATUS =", nextGenerationStatus);
       setInput(roadmap.title ?? roadmap.careerGoal ?? "");
 
       const steps = roadmap.steps ?? [];
@@ -491,10 +493,6 @@ export function RoadmapPage({
   }, [roadmapId, API_URL]);
 
   useEffect(() => {
-    console.log("ROADMAP NODES CHANGED", roadmapNodes);
-  }, [roadmapNodes]);
-
-  useEffect(() => {
     setShowPopup(false);
     setProcessMsgIndex(0);
     if (!roadmapId) {
@@ -530,7 +528,6 @@ export function RoadmapPage({
   }, [isLoading]);
 
   const handleGenerate = async () => {
-    console.log("GENERATE CLICKED");
     if (!input.trim() || generationLocked) return;
 
     try {
@@ -596,16 +593,19 @@ export function RoadmapPage({
         throw new Error("Not authenticated");
       }
 
-      const response = await fetch(`${API_URL}/api/roadmap/steps/${stepId}/status`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${API_URL}/api/roadmap/steps/${stepId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: newStatus,
+          }),
         },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Failed to patch status on Express API.");
@@ -613,7 +613,7 @@ export function RoadmapPage({
     } catch (error) {
       console.error("Failed to update step status:", error);
       await loadLatestRoadmap();
-    } bits: {
+    } finally {
       setStatusUpdatingId(null);
     }
   };

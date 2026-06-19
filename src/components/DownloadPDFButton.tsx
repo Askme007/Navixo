@@ -41,7 +41,7 @@ export function DownloadPDFButton({ className = "" }: DownloadPDFButtonProps) {
 
   const handleFinalDownload = () => {
     // Simulate actual PDF download
-    console.log("Downloading PDF...");
+    // console.log("Downloading PDF...");
 
     // Close the popup
     setShowSuccessPopup(false);

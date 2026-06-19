@@ -12,7 +12,7 @@ export default function authenticate(req, res, next) {
   const token = authHeader.split(" ")[1];
 
   try {
-    console.log("TOKEN RECEIVED =", token.substring(0, 40));
+    // console.log("TOKEN RECEIVED =", token.substring(0, 40));
 
     const decoded = verifyToken(token);
 
@@ -23,9 +23,9 @@ export default function authenticate(req, res, next) {
 
     next();
   } catch (err) {
-    console.log("AUTH FAILED");
-    console.log("FULL TOKEN =", token);
-    console.log(err);
+    // console.log("AUTH FAILED");
+    // console.log("FULL TOKEN =", token);
+    // console.log(err);
 
     return res.status(401).json({
       error: "Invalid token",
