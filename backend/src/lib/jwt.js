@@ -9,10 +9,10 @@ export function generateToken(user) {
       email: user.email,
     },
     JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "7d" },
   );
 }
-console.log("JWT_SECRET =", process.env.JWT_SECRET);
+// console.log("JWT_SECRET =", process.env.JWT_SECRET);
 export function verifyToken(token) {
   return jwt.verify(token, JWT_SECRET);
 }

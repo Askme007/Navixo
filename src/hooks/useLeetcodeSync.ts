@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authService } from "../services/auth.service";
 import { dashboardService } from "../services/dashboard.service";
 
@@ -14,16 +14,35 @@ export interface LeetcodeProfile {
   updated_at: string;
 }
 
+interface LeetcodeCache {
+  userId: string;
+  profile: LeetcodeProfile | null;
+}
+
+let leetcodeCache: LeetcodeCache | null = null;
+
+function getUserId() {
+  return authService.getUser()?.id ?? null;
+}
+
+function getCachedProfile(userId: string | null) {
+  return userId && leetcodeCache?.userId === userId
+    ? leetcodeCache.profile
+    : null;
+}
+
 export function useLeetcodeSync() {
-  const [leetcodeProfile, setLeetcodeProfile] =
-    useState<LeetcodeProfile | null>(null);
-
-  const [leetcodeUsername, setLeetcodeUsername] = useState("");
-
+  const mountedRef = useRef(true);
+  const userId = getUserId();
+  const cachedProfile = getCachedProfile(userId);
+  const [leetcodeProfile, setLeetcodeProfile] = useState<LeetcodeProfile | null>(
+    () => cachedProfile,
+  );
+  const [leetcodeUsername, setLeetcodeUsername] = useState(
+    () => cachedProfile?.username ?? "",
+  );
   const [editingLc, setEditingLc] = useState(false);
-
   const [syncingLeetcode, setSyncingLeetcode] = useState(false);
-
   const [lcError, setLcError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,25 +50,37 @@ export function useLeetcodeSync() {
   }, [leetcodeUsername]);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     const load = async () => {
       try {
-        const data = await dashboardService.getLeetcodeProfile();
+        const data = (await dashboardService.getLeetcodeProfile()) as LeetcodeProfile | null;
+        const currentUserId = getUserId();
 
-        if (data) {
-          setLeetcodeProfile(data as LeetcodeProfile);
+        if (currentUserId) {
+          leetcodeCache = { userId: currentUserId, profile: data };
+        }
+
+        if (mountedRef.current) {
+          setLeetcodeProfile(data);
           setLeetcodeUsername(data?.username ?? "");
         }
-      } catch (err) {
-        console.error(err);
+      } catch (error) {
+        // Preserve a cached profile when a background refresh is unavailable.
+        console.error(error);
       }
     };
 
+    // The card paints from cache first, then refreshes quietly in the
+    // background so returning to the dashboard never flashes its empty state.
     load();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  const syncLeetcode = async (
-    onSuccess?: () => void
-  ): Promise<void> => {
+  const syncLeetcode = async (onSuccess?: () => void): Promise<void> => {
     if (!leetcodeUsername.trim() || syncingLeetcode) return;
 
     try {
@@ -57,12 +88,9 @@ export function useLeetcodeSync() {
       setLcError(null);
 
       const token = authService.getToken();
+      if (!token) throw new Error("Not authenticated");
 
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
-
-      const res = await fetch(
+      const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/platforms/leetcode/sync`,
         {
           method: "POST",
@@ -70,27 +98,27 @@ export function useLeetcodeSync() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            username: leetcodeUsername.trim(),
-          }),
-        }
+          body: JSON.stringify({ username: leetcodeUsername.trim() }),
+        },
       );
 
-      const json = await res.json();
-
-      if (!res.ok || json.error) {
+      const json = await response.json();
+      if (!response.ok || json.error) {
         throw new Error(json.error ?? "LeetCode sync failed");
       }
 
-      const profile = await dashboardService.getLeetcodeProfile();
+      const profile = (await dashboardService.getLeetcodeProfile()) as LeetcodeProfile;
+      const currentUserId = getUserId();
+      if (currentUserId) {
+        leetcodeCache = { userId: currentUserId, profile };
+      }
 
       setLeetcodeProfile(profile);
-
+      setLeetcodeUsername(profile.username ?? "");
       setEditingLc(false);
-
       onSuccess?.();
-    } catch (e: any) {
-      setLcError(e.message ?? "LeetCode sync failed");
+    } catch (error: unknown) {
+      setLcError(error instanceof Error ? error.message : "LeetCode sync failed");
     } finally {
       setSyncingLeetcode(false);
     }

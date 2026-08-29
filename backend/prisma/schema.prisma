@@ -276,6 +276,7 @@ model user_embeddings {
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model user_state {
   user_id           String    @id @db.Uuid
+  active_roadmap_id String?   @db.Uuid
   current_phase     String?   @default("Foundation")
   streak            Int?      @default(0)
   last_checkin_date DateTime? @db.Date

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { authService } from "../services/auth.service";
 import { dashboardService } from "../services/dashboard.service";
 
@@ -18,16 +18,35 @@ export interface CodeforcesProfile {
   last_synced_at: string;
 }
 
+interface CodeforcesCache {
+  userId: string;
+  profile: CodeforcesProfile | null;
+}
+
+let codeforcesCache: CodeforcesCache | null = null;
+
+function getUserId() {
+  return authService.getUser()?.id ?? null;
+}
+
+function getCachedProfile(userId: string | null) {
+  return userId && codeforcesCache?.userId === userId
+    ? codeforcesCache.profile
+    : null;
+}
+
 export function useCodeforcesSync() {
-  const [cfProfile, setCfProfile] =
-    useState<CodeforcesProfile | null>(null);
-
-  const [cfUsername, setCfUsername] = useState("");
-
+  const mountedRef = useRef(true);
+  const userId = getUserId();
+  const cachedProfile = getCachedProfile(userId);
+  const [cfProfile, setCfProfile] = useState<CodeforcesProfile | null>(
+    () => cachedProfile,
+  );
+  const [cfUsername, setCfUsername] = useState(
+    () => cachedProfile?.username ?? "",
+  );
   const [editingCf, setEditingCf] = useState(false);
-
   const [syncingCf, setSyncingCf] = useState(false);
-
   const [cfError, setCfError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,25 +54,37 @@ export function useCodeforcesSync() {
   }, [cfUsername]);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     const load = async () => {
       try {
-        const data = await dashboardService.getCodeforcesProfile();
+        const data = (await dashboardService.getCodeforcesProfile()) as CodeforcesProfile | null;
+        const currentUserId = getUserId();
 
-        if (data) {
-          setCfProfile(data);
-          setCfUsername(data.username ?? "");
+        if (currentUserId) {
+          codeforcesCache = { userId: currentUserId, profile: data };
         }
-      } catch (err) {
-        console.error(err);
+
+        if (mountedRef.current) {
+          setCfProfile(data);
+          setCfUsername(data?.username ?? "");
+        }
+      } catch (error) {
+        // Keep cached data on a transient background-refresh failure.
+        console.error(error);
       }
     };
 
+    // Fetch fresh profile data without replacing the cached card with its
+    // disconnected default while a user moves between routes.
     load();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  const syncCodeforces = async (
-    onSuccess?: () => void
-  ): Promise<void> => {
+  const syncCodeforces = async (onSuccess?: () => void): Promise<void> => {
     if (!cfUsername.trim() || syncingCf) return;
 
     try {
@@ -61,12 +92,9 @@ export function useCodeforcesSync() {
       setCfError(null);
 
       const token = authService.getToken();
+      if (!token) throw new Error("Not authenticated");
 
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
-
-      const res = await fetch(
+      const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/platforms/codeforces/sync`,
         {
           method: "POST",
@@ -74,27 +102,27 @@ export function useCodeforcesSync() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            username: cfUsername.trim(),
-          }),
-        }
+          body: JSON.stringify({ username: cfUsername.trim() }),
+        },
       );
 
-      const json = await res.json();
-
-      if (!res.ok || json.error) {
+      const json = await response.json();
+      if (!response.ok || json.error) {
         throw new Error(json.error ?? "Codeforces sync failed");
       }
 
-      const profile = await dashboardService.getCodeforcesProfile();
+      const profile = (await dashboardService.getCodeforcesProfile()) as CodeforcesProfile;
+      const currentUserId = getUserId();
+      if (currentUserId) {
+        codeforcesCache = { userId: currentUserId, profile };
+      }
 
       setCfProfile(profile);
-
+      setCfUsername(profile.username ?? "");
       setEditingCf(false);
-
       onSuccess?.();
-    } catch (e: any) {
-      setCfError(e.message ?? "Codeforces sync failed");
+    } catch (error: unknown) {
+      setCfError(error instanceof Error ? error.message : "Codeforces sync failed");
     } finally {
       setSyncingCf(false);
     }
