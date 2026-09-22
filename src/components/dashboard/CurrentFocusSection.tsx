@@ -63,10 +63,11 @@ export function CurrentFocusSection({
         {focusSteps.map((step) => (
           <div
             key={step.id}
-            className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all ${
+            onClick={() => onViewStep(step.id)}
+            className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all cursor-pointer group ${
               step.status === "in-progress"
-                ? "bg-[#8B5CF6]/10 border-[#8B5CF6]/30"
-                : "bg-white/5 border-white/10 hover:bg-white/10"
+                ? "bg-[#8B5CF6]/10 border-[#8B5CF6]/30 hover:border-[#8B5CF6]/50"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
             }`}
           >
             <div className="flex items-start gap-4">
@@ -76,7 +77,7 @@ export function CurrentFocusSection({
                 />
               </div>
               <div>
-                <h4 className="text-white font-medium text-sm md:text-base mb-1">
+                <h4 className="text-white font-medium text-sm md:text-base mb-1 group-hover:text-purple-300 transition-colors">
                   {step.title}
                 </h4>
                 <p className="text-white/50 text-xs md:text-sm line-clamp-1 mb-2">
@@ -93,9 +94,13 @@ export function CurrentFocusSection({
               </div>
             </div>
             <Button
-              onClick={() => onViewStep(step.id)}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewStep(step.id);
+              }}
               variant="ghost"
-              className="hidden md:flex bg-white/5 hover:bg-white/10 text-white text-xs border border-white/10 rounded-lg shrink-0"
+              className="flex bg-white/5 hover:bg-purple-600 hover:text-white text-white/80 text-xs border border-white/10 rounded-lg shrink-0 transition-all font-medium"
             >
               View Node
             </Button>

@@ -242,18 +242,28 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
                   userName={userName}
                   activeRoadmap={activeRoadmap}
                   progressValue={progressValue}
-                  onOpenRoadmap={() =>
-                    activeRoadmap
-                      ? onNavigate(`roadmap/${activeRoadmap.id}`)
-                      : onNavigate("roadmap")
-                  }
+                  onOpenRoadmap={() => {
+                    const targetRoadmapId = activeRoadmap?.id || userState?.activeRoadmapId;
+                    if (targetRoadmapId) {
+                      onNavigate(`roadmap/${targetRoadmapId}`);
+                    } else {
+                      onNavigate("roadmap");
+                    }
+                  }}
                   onAskNavixo={() => onNavigate("chat")}
                 />
 
                 <CurrentFocusSection
                   focusSteps={focusSteps}
                   onGenerateRoadmap={() => onNavigate("roadmap")}
-                  onViewStep={() => onNavigate(`roadmap/${activeRoadmap?.id}`)}
+                  onViewStep={(stepId) => {
+                    const targetRoadmapId = activeRoadmap?.id || userState?.activeRoadmapId;
+                    if (targetRoadmapId) {
+                      onNavigate(`roadmap/${targetRoadmapId}?stepId=${stepId}`);
+                    } else {
+                      onNavigate(`roadmap?stepId=${stepId}`);
+                    }
+                  }}
                 />
               </div>
 

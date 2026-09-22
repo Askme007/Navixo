@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -212,11 +212,19 @@ function RoadmapStepCard({
   ) => Promise<void> | void;
   onAskMentor?: () => void;
   statusUpdating: boolean;
+  isTarget?: boolean;
 }) {
   const resources = step.resources ?? [];
 
   return (
-    <Card className="overflow-hidden border-white/10 bg-white/5 shadow-sm">
+    <Card
+      id={`step-${step.id}`}
+      className={`overflow-hidden transition-all duration-500 ${
+        isTarget
+          ? "border-purple-500/80 bg-purple-950/20 shadow-[0_0_35px_rgba(139,92,246,0.35)] ring-1 ring-purple-500/50"
+          : "border-white/10 bg-white/5 shadow-sm hover:border-white/20"
+      }`}
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -247,6 +255,11 @@ function RoadmapStepCard({
             >
               {step.status.replace("-", " ")}
             </Badge>
+            {isTarget && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/30 text-purple-200 border border-purple-500/40 uppercase tracking-wider animate-pulse flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5 text-purple-400" /> Focus Target
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 text-xs text-slate-400">
               <Clock className="h-3.5 w-3.5" />
               {step.duration}
@@ -415,6 +428,8 @@ export function RoadmapPage({
   const [isPublic, setIsPublic] = useState(false);
 
   const { roadmapId } = useParams();
+  const [searchParams] = useSearchParams();
+  const targetStepId = searchParams.get("stepId");
   const navigate = useNavigate();
   const API_URL =
     import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "";
@@ -521,11 +536,14 @@ export function RoadmapPage({
 
       setRoadmapNodes(rebuiltNodes);
 
-      setExpandedStepId((current) =>
-        current && rebuiltNodes.some((node) => node.id === current)
+      setExpandedStepId((current) => {
+        if (targetStepId && rebuiltNodes.some((node) => node.id === targetStepId)) {
+          return targetStepId;
+        }
+        return current && rebuiltNodes.some((node) => node.id === current)
           ? current
-          : (rebuiltNodes[0]?.id ?? null),
-      );
+          : (rebuiltNodes[0]?.id ?? null);
+      });
 
       return nextGenerationStatus;
     } catch (error) {
@@ -533,7 +551,21 @@ export function RoadmapPage({
       setGenerationStatus("failed");
       return "failed";
     }
-  }, [roadmapId, API_URL]);
+  }, [roadmapId, API_URL, targetStepId]);
+
+  // Smoothly scroll to target step when navigated with ?stepId=
+  useEffect(() => {
+    if (targetStepId && roadmapNodes.length > 0) {
+      setExpandedStepId(targetStepId);
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`step-${targetStepId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [targetStepId, roadmapNodes]);
 
   useEffect(() => {
     setIsNotFound(false);
@@ -1146,6 +1178,7 @@ export function RoadmapPage({
                       index={index}
                       expanded={expanded}
                       statusUpdating={statusUpdatingId === step.id}
+                      isTarget={targetStepId === step.id}
                       onToggle={() =>
                         setExpandedStepId((current) =>
                           current === step.id ? null : step.id,
