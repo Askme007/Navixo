@@ -153,9 +153,8 @@ export function useCodeforcesSync(initialProfile?: CodeforcesProfile | null) {
           setCfProfile(data);
           setCfUsername(data.username ?? "");
         }
-      } catch (error) {
-        // Keep cached data on a transient background-refresh failure.
-        console.error(error);
+      } catch {
+        // Keep cached data on a transient background-refresh failure without console noise.
       }
     };
 

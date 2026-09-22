@@ -201,6 +201,7 @@ function RoadmapStepCard({
   onStatusChange,
   onAskMentor,
   statusUpdating,
+  isTarget = false,
 }: {
   step: RoadmapNode;
   index: number;

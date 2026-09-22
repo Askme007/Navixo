@@ -16,6 +16,9 @@ async function apiGet(endpoint: string) {
   });
 
   if (!res.ok) {
+    if (res.status === 404 && endpoint.includes("/platforms/")) {
+      return null;
+    }
     if (res.status === 401) {
       authService.logout();
       if (typeof window !== "undefined" && !window.location.pathname.includes("/auth")) {

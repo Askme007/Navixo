@@ -67,21 +67,6 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
         ? [{ date: new Date().toISOString(), completionRate: avgCompletion }]
         : [];
 
-  // Automated Placement Readiness Index
-  const dsaScore = Math.min(
-    100,
-    Math.round((Number(platforms?.leetcode?.solved || 0) / 200) * 100),
-  );
-  const roadmapScore = Math.min(100, Math.round(progressValue || 0));
-  const streakScore = Math.min(100, Math.round((currentStreak / 10) * 100));
-  const readinessIndex = Math.min(
-    100,
-    Math.max(
-      20,
-      Math.round(dsaScore * 0.45 + roadmapScore * 0.4 + streakScore * 0.15),
-    ),
-  );
-
   return (
     <div className="min-h-screen bg-[#07090e] text-white selection:bg-[#8B5CF6]/30">
       <DashboardHeader
@@ -128,25 +113,7 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
                 </div>
               </div>
 
-              <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-                {/* Placement Readiness Gauge */}
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-[10px] text-white/40 uppercase tracking-widest font-mono">
-                      Placement Readiness
-                    </p>
-                    <p className="text-lg font-bold text-white font-mono tracking-tight leading-none">
-                      {readinessIndex}%
-                    </p>
-                  </div>
-                  <div className="w-24 bg-white/10 h-2 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyan-400 to-[#8B5CF6] rounded-full transition-all duration-700"
-                      style={{ width: `${readinessIndex}%` }}
-                    />
-                  </div>
-                </div>
-
+              <div className="flex items-center gap-3 w-full md:w-auto justify-end">
                 <Button
                   onClick={() => onNavigate("chat")}
                   size="sm"

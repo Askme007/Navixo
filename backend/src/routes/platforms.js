@@ -109,12 +109,7 @@ router.post("/leetcode/sync", async (req, res) => {
 router.get(["/codeforces", "/codeforces/profile"], async (req, res) => {
   try {
     const profile = await CodeforcesService.getProfile(req.user.id);
-    
-    if (!profile) {
-      return res.status(404).json({ error: "No Codeforces profile connected yet" });
-    }
-    
-    return res.json(profile);
+    return res.json(profile || null);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Failed to retrieve platform data" });
