@@ -15,6 +15,7 @@ Your mission is to help the learner make concrete, day-to-day progress on placem
 Stay in character as a practical mentor:
 - Give specific, achievable next actions rather than generic motivation.
 - Connect advice directly to the learner's active roadmap, LeetCode tier, and current task protocol below.
+- When the learner asks you to adapt, customize, shorten, extend, or update a roadmap step, use the update_roadmap_step tool to modify it directly in their active roadmap.
 - Be encouraging, realistic, and honest. Keep responses structured and concise with code or bullet points when helpful.
 
 Scope boundary:
@@ -83,6 +84,46 @@ const mentorTools = [
             },
           },
           required: ["stepOrderOrTitle", "status"],
+        },
+      },
+      {
+        name: "update_roadmap_step",
+        description:
+          "Update or modify the details of a roadmap step in the student's active roadmap (e.g. change title, description, duration, level, or mentor tip). Call this whenever the user asks you to customize, adapt, change, shorten, extend, or update a roadmap step.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            stepOrderOrId: {
+              type: "STRING",
+              description:
+                "The step number (e.g. '1', '2'), the step UUID, or a keyword from the step title to identify which step to update.",
+            },
+            title: {
+              type: "STRING",
+              description: "The new or refined title for the roadmap step.",
+            },
+            description: {
+              type: "STRING",
+              description:
+                "The updated, specific description of what the student should learn, practice, and build in this step.",
+            },
+            duration: {
+              type: "STRING",
+              description:
+                "The estimated duration (e.g. '3 Days', '1 Week', '2 Weeks').",
+            },
+            level: {
+              type: "STRING",
+              description:
+                "The difficulty level: 'beginner', 'intermediate', or 'advanced'.",
+            },
+            mentorTip: {
+              type: "STRING",
+              description:
+                "Practical guidance, common interview mistakes, or actionable tips for this step.",
+            },
+          },
+          required: ["stepOrderOrId"],
         },
       },
     ],
@@ -253,6 +294,103 @@ async function executeMentorTool(name, args, userId) {
           action: "update_roadmap_step_status",
           stepTitle: step.title,
           status: cleanStatus,
+        },
+      };
+    }
+
+    if (name === "update_roadmap_step") {
+      const term = (args.stepOrderOrId || "").toString().toLowerCase().trim();
+
+      // Find active or latest roadmap for this user
+      const userState = await prisma.user_state?.findUnique({
+        where: { user_id: userId },
+      });
+
+      let roadmap = null;
+      if (userState?.active_roadmap_id) {
+        roadmap = await prisma.userRoadmap.findFirst({
+          where: { id: userState.active_roadmap_id, userId },
+          include: { steps: { orderBy: { stepOrder: "asc" } } },
+        });
+      }
+      if (!roadmap) {
+        roadmap = await prisma.userRoadmap.findFirst({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          include: { steps: { orderBy: { stepOrder: "asc" } } },
+        });
+      }
+
+      if (!roadmap || !roadmap.steps || roadmap.steps.length === 0) {
+        return {
+          status: "not_found",
+          badgeText: "No active roadmap found to update",
+          result: { error: "Roadmap has no steps" },
+        };
+      }
+
+      // Match step by UUID, stepOrder number, or title substring
+      let step = roadmap.steps.find((s) => s.id.toLowerCase() === term);
+      if (!step) {
+        step = roadmap.steps.find((s) => s.stepOrder.toString() === term);
+      }
+      if (!step) {
+        step = roadmap.steps.find((s) => s.title.toLowerCase().includes(term));
+      }
+
+      if (!step) {
+        return {
+          status: "not_found",
+          badgeText: `Could not find roadmap step matching "${args.stepOrderOrId}"`,
+          result: { error: `Step matching "${args.stepOrderOrId}" not found` },
+        };
+      }
+
+      const updateData = {};
+      if (args.title && args.title.trim()) updateData.title = args.title.trim();
+      if (args.description && args.description.trim()) updateData.description = args.description.trim();
+      if (args.duration && args.duration.trim()) updateData.duration = args.duration.trim();
+      if (args.mentorTip && args.mentorTip.trim()) updateData.mentorTip = args.mentorTip.trim();
+      if (args.level) {
+        const cleanLevel = args.level.toLowerCase().trim();
+        if (["beginner", "intermediate", "advanced"].includes(cleanLevel)) {
+          updateData.level = cleanLevel;
+        }
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return {
+          status: "noop",
+          badgeText: `No changes specified for Step ${step.stepOrder}`,
+          result: { error: "No fields to update provided" },
+        };
+      }
+
+      const updated = await prisma.roadmapStep.update({
+        where: { id: step.id },
+        data: updateData,
+      });
+
+      const changesSummary = [
+        updateData.title ? `Title: "${updated.title}"` : null,
+        updateData.duration ? `Duration: ${updated.duration}` : null,
+        updateData.level ? `Level: ${updated.level}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      return {
+        status: "success",
+        badgeText: `Updated Step ${step.stepOrder}: "${updated.title}" (${changesSummary || "Content updated"})`,
+        result: {
+          action: "update_roadmap_step",
+          stepId: step.id,
+          stepOrder: step.stepOrder,
+          title: updated.title,
+          description: updated.description,
+          duration: updated.duration,
+          level: updated.level,
+          mentorTip: updated.mentorTip,
         },
       };
     }

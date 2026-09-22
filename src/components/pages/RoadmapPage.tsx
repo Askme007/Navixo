@@ -116,6 +116,41 @@ function normalizeResourceType(value: unknown): ResourceType {
   return "docs";
 }
 
+function rebuildRoadmapNodes(steps: any[]): RoadmapNode[] {
+  if (!Array.isArray(steps)) return [];
+  return steps.map((step: any) => ({
+    id: step.id,
+    title: step.title ?? "",
+    description: step.description ?? "",
+    duration: step.duration ?? "",
+    level: normalizeLevel(step.level),
+    status: normalizeStatus(step.status),
+    mentorTip: step.mentorTip ?? "",
+    resources: (step.resources ?? []).map((resource: any) => ({
+      type: normalizeResourceType(resource.type),
+      title: resource.title ?? "",
+      provider: resource.provider ?? "",
+      url: resource.url ?? "",
+    })),
+  }));
+}
+
+function getCachedRoadmap(id?: string | null): any | null {
+  if (!id || !isValidUUID(id)) return null;
+  try {
+    const raw = localStorage.getItem(`navixo_roadmap_cache_${id}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function saveCachedRoadmap(id: string, data: any) {
+  if (!id || !isValidUUID(id) || !data) return;
+  try {
+    localStorage.setItem(`navixo_roadmap_cache_${id}`, JSON.stringify(data));
+  } catch {}
+}
+
 function getStatusIcon(status: RoadmapStatus) {
   switch (status) {
     case "done":
@@ -410,30 +445,53 @@ export function RoadmapPage({
   onLogout,
   onNavigateToChat,
 }: RoadmapPageProps) {
-  const [generationStatus, setGenerationStatus] =
-    useState<GenerationStatus>("idle");
-  const [input, setInput] = useState("");
-  const [roadmapNodes, setRoadmapNodes] = useState<RoadmapNode[]>([]);
-  const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
-  const [processMsgIndex, setProcessMsgIndex] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [isActiveFocus, setIsActiveFocus] = useState(false);
-  const [isActivating, setIsActivating] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
-  const [pollTrigger, setPollTrigger] = useState(0);
-  const [isNotFound, setIsNotFound] = useState(false);
-  const [isPrivateRoadmap, setIsPrivateRoadmap] = useState(false);
-  const [isOwner, setIsOwner] = useState(true);
-  const [isPublic, setIsPublic] = useState(false);
-
   const { roadmapId } = useParams();
   const [searchParams] = useSearchParams();
   const targetStepId = searchParams.get("stepId");
   const navigate = useNavigate();
   const API_URL =
     import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "";
+
+  // 0ms instant frame-1 local cache hydration
+  const initialCache = getCachedRoadmap(roadmapId);
+  const initialNodes = initialCache?.steps?.length
+    ? rebuildRoadmapNodes(initialCache.steps)
+    : [];
+
+  const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(() => {
+    if (initialCache?.generationStatus) {
+      return initialCache.generationStatus as GenerationStatus;
+    }
+    return roadmapId ? "processing" : "idle";
+  });
+  const [input, setInput] = useState(
+    () => initialCache?.title ?? initialCache?.careerGoal ?? ""
+  );
+  const [roadmapNodes, setRoadmapNodes] = useState<RoadmapNode[]>(initialNodes);
+  const [expandedStepId, setExpandedStepId] = useState<string | null>(() => {
+    if (targetStepId && initialNodes.some((n) => n.id === targetStepId)) {
+      return targetStepId;
+    }
+    return initialNodes[0]?.id ?? null;
+  });
+  const [processMsgIndex, setProcessMsgIndex] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isActiveFocus, setIsActiveFocus] = useState(() =>
+    Boolean(initialCache?.isActive)
+  );
+  const [isActivating, setIsActivating] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [pollTrigger, setPollTrigger] = useState(0);
+  const [isNotFound, setIsNotFound] = useState(false);
+  const [isPrivateRoadmap, setIsPrivateRoadmap] = useState(false);
+  const [isOwner, setIsOwner] = useState(() =>
+    initialCache ? initialCache.isOwner !== false : true
+  );
+  const [isPublic, setIsPublic] = useState(() =>
+    Boolean(initialCache?.isPublic)
+  );
 
   const isLoading =
     generationStatus === "creating" || generationStatus === "processing";
@@ -511,6 +569,9 @@ export function RoadmapPage({
       setIsOwner(roadmap.isOwner !== false);
       setIsPublic(Boolean(roadmap.isPublic));
 
+      // Persist in local cache for instant future loads
+      saveCachedRoadmap(roadmapId, roadmap);
+
       const steps = roadmap.steps ?? [];
 
       if (!steps.length) {
@@ -519,22 +580,7 @@ export function RoadmapPage({
         return nextGenerationStatus;
       }
 
-      const rebuiltNodes: RoadmapNode[] = steps.map((step: any) => ({
-        id: step.id,
-        title: step.title ?? "",
-        description: step.description ?? "",
-        duration: step.duration ?? "",
-        level: normalizeLevel(step.level),
-        status: normalizeStatus(step.status),
-        mentorTip: step.mentorTip ?? "",
-        resources: (step.resources ?? []).map((resource: any) => ({
-          type: normalizeResourceType(resource.type),
-          title: resource.title ?? "",
-          provider: resource.provider ?? "",
-          url: resource.url ?? "",
-        })),
-      }));
-
+      const rebuiltNodes: RoadmapNode[] = rebuildRoadmapNodes(steps);
       setRoadmapNodes(rebuiltNodes);
 
       setExpandedStepId((current) => {
@@ -700,11 +746,23 @@ export function RoadmapPage({
 
     try {
       // Optimistic Update
-      setRoadmapNodes((prev) =>
-        prev.map((node) =>
+      setRoadmapNodes((prev) => {
+        const next = prev.map((node) =>
           node.id === stepId ? { ...node, status: newStatus } : node,
-        ),
-      );
+        );
+        if (roadmapId) {
+          const cached = getCachedRoadmap(roadmapId);
+          if (cached) {
+            saveCachedRoadmap(roadmapId, {
+              ...cached,
+              steps: (cached.steps || []).map((s: any) =>
+                s.id === stepId ? { ...s, status: newStatus } : s
+              ),
+            });
+          }
+        }
+        return next;
+      });
 
       const token = authService.getToken();
       if (!token) {
@@ -1084,7 +1142,7 @@ export function RoadmapPage({
             </Card>
           )}
 
-          {isLoading && !hasRoadmap && (
+          {(isLoading || (Boolean(roadmapId) && generationStatus !== "failed")) && !hasRoadmap && !isNotFound && !isPrivateRoadmap && (
             <div className="space-y-3">
               {[1, 2, 3].map((index) => (
                 <div
@@ -1190,7 +1248,11 @@ export function RoadmapPage({
                         onNavigateToChat
                           ? () =>
                               onNavigateToChat(
-                                `I need help with this roadmap step.\n\nStep: ${step.title}\nDescription: ${step.description}\nDuration: ${step.duration}\nLevel: ${step.level}\n\nGive me a short action plan and common mistakes to avoid.`,
+                                `I need guidance on this roadmap step:\n` +
+                                `[Step #${index + 1}: ${step.title}] (Step ID: ${step.id})\n` +
+                                `Duration: ${step.duration} | Level: ${step.level}\n` +
+                                `Description: ${step.description}\n\n` +
+                                `Could you give me an action plan and key mistakes to avoid? (Feel free to adapt or update this step if we should modify its scope, duration, or focus for my placement goals).`
                               )
                           : undefined
                       }
