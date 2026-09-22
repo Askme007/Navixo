@@ -15,7 +15,7 @@ export default function authenticate(req, res, next) {
     const decoded = verifyToken(token);
 
     req.user = {
-      id: decoded.id,
+      id: decoded.id || decoded.userId || decoded.sub,
       email: decoded.email,
     };
 
@@ -40,7 +40,7 @@ export function optionalAuthenticate(req, res, next) {
   try {
     const decoded = verifyToken(token);
     req.user = {
-      id: decoded.id,
+      id: decoded.id || decoded.userId || decoded.sub,
       email: decoded.email,
     };
   } catch {

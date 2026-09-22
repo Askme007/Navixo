@@ -12,6 +12,12 @@ async function apiGet(endpoint: string) {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      authService.logout();
+      if (typeof window !== "undefined" && !window.location.pathname.includes("/auth")) {
+        window.location.href = "/auth";
+      }
+    }
     const text = await res.text();
     throw new Error(text || "Request failed");
   }
