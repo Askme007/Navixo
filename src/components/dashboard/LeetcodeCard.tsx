@@ -9,7 +9,7 @@ const MEDIUM_TOTAL = 2066;
 const HARD_TOTAL = 942;
 const TOTAL_PROBLEMS = EASY_TOTAL + MEDIUM_TOTAL + HARD_TOTAL;
 
-export function LeetcodeCard() {
+export function LeetcodeCard({ initialProfile }: { initialProfile?: any } = {}) {
   const {
     leetcodeProfile,
     leetcodeUsername,
@@ -19,7 +19,7 @@ export function LeetcodeCard() {
     syncingLeetcode,
     lcError,
     syncLeetcode,
-  } = useLeetcodeSync();
+  } = useLeetcodeSync(initialProfile);
 
   const handleSave = async () => {
     if (!leetcodeUsername.trim()) return;

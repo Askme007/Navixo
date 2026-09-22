@@ -25,16 +25,33 @@ function getUserId() {
   return authService.getUser()?.id ?? null;
 }
 
-function getCachedProfile(userId: string | null) {
-  return userId && leetcodeCache?.userId === userId
-    ? leetcodeCache.profile
-    : null;
+function getCachedProfile(userId: string | null): LeetcodeProfile | null {
+  if (!userId) return null;
+  if (leetcodeCache?.userId === userId) {
+    return leetcodeCache.profile;
+  }
+  try {
+    const raw = localStorage.getItem(`navixo_leetcode_cache_${userId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      leetcodeCache = { userId, profile: parsed };
+      return parsed;
+    }
+  } catch {}
+  return null;
 }
 
-export function useLeetcodeSync() {
+function saveCachedProfile(userId: string, profile: LeetcodeProfile | null) {
+  leetcodeCache = { userId, profile };
+  try {
+    localStorage.setItem(`navixo_leetcode_cache_${userId}`, JSON.stringify(profile));
+  } catch {}
+}
+
+export function useLeetcodeSync(initialProfile?: LeetcodeProfile | null) {
   const mountedRef = useRef(true);
   const userId = getUserId();
-  const cachedProfile = getCachedProfile(userId);
+  const cachedProfile = initialProfile || getCachedProfile(userId);
   const [leetcodeProfile, setLeetcodeProfile] = useState<LeetcodeProfile | null>(
     () => cachedProfile,
   );
@@ -50,6 +67,14 @@ export function useLeetcodeSync() {
   }, [leetcodeUsername]);
 
   useEffect(() => {
+    if (initialProfile) {
+      setLeetcodeProfile(initialProfile);
+      setLeetcodeUsername(initialProfile.username || "");
+      if (userId) saveCachedProfile(userId, initialProfile);
+    }
+  }, [initialProfile, userId]);
+
+  useEffect(() => {
     mountedRef.current = true;
 
     const load = async () => {
@@ -58,7 +83,7 @@ export function useLeetcodeSync() {
         const currentUserId = getUserId();
 
         if (currentUserId) {
-          leetcodeCache = { userId: currentUserId, profile: data };
+          saveCachedProfile(currentUserId, data);
         }
 
         if (mountedRef.current) {

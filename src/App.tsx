@@ -1,7 +1,7 @@
 // src/App.tsx
 
 import { useEffect, useState } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useParams } from "react-router-dom";
 
 import { LandingPage } from "./components/pages/LandingPage";
 import { AuthPage } from "./components/pages/AuthPage";
@@ -9,9 +9,42 @@ import { OnboardingPage } from "./components/pages/OnboardingPage";
 import { Dashboard } from "./components/pages/Dashboard";
 import { ChatbotPage } from "./components/pages/ChatbotPage";
 import { RoadmapPage } from "./components/pages/RoadmapPage";
+import { ProfilePage } from "./components/pages/ProfilePage";
+import { NotFoundPage } from "./components/pages/NotFoundPage";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import { authService } from "./services/auth.service";
+import { Toaster } from "./components/ui/sonner";
+
+interface RoadmapRouteProps {
+  userName: string;
+  onLogout: () => void;
+  onNavigateToChat: (message: string) => void;
+}
+
+function RoadmapRoute({
+  userName,
+  onLogout,
+  onNavigateToChat,
+}: RoadmapRouteProps) {
+  const { roadmapId } = useParams();
+  const navigate = useNavigate();
+  const isAuthenticated = authService.isAuthenticated();
+
+  // If no roadmapId in URL, user must be logged in to create a new roadmap
+  if (!roadmapId && !isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return (
+    <RoadmapPage
+      userName={userName}
+      onBack={() => navigate(isAuthenticated ? "/dashboard" : "/")}
+      onLogout={onLogout}
+      onNavigateToChat={onNavigateToChat}
+    />
+  );
+}
 
 export default function App() {
   const navigate = useNavigate();
@@ -52,7 +85,9 @@ export default function App() {
   };
 
   return (
-    <Routes>
+    <>
+      <Toaster position="bottom-right" richColors closeButton />
+      <Routes>
       <Route
         path="/"
         element={
@@ -112,27 +147,38 @@ export default function App() {
       />
 
       <Route
-        path="/roadmap/:roadmapId?"
+        path="/profile"
         element={
           <ProtectedRoute>
-            <RoadmapPage
+            <ProfilePage
               userName={userName}
-              onBack={() => navigate("/dashboard")}
               onLogout={handleLogout}
-              onNavigateToChat={(message) => {
-                setInitialMessage(message);
-                setFromRoadmap(true);
-                navigate("/chat");
-              }}
+              onNavigate={(path) => navigate("/" + path)}
             />
           </ProtectedRoute>
         }
       />
 
       <Route
+        path="/roadmap/:roadmapId?"
+        element={
+          <RoadmapRoute
+            userName={userName}
+            onLogout={handleLogout}
+            onNavigateToChat={(message) => {
+              setInitialMessage(message);
+              setFromRoadmap(true);
+              navigate("/chat");
+            }}
+          />
+        }
+      />
+
+      <Route
         path="*"
-        element={<Navigate to="/" replace />}
+        element={<NotFoundPage />}
       />
     </Routes>
+    </>
   );
 }

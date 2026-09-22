@@ -73,15 +73,50 @@ export class CodeforcesService {
     });
 
     // 5. Return a sanitized object with both naming variants to guarantee frontend compatibility
+    return this.formatProfile(profile, realName);
+  }
+
+  // 📍 Format and sanitize Codeforces profile object to support both camelCase and snake_case
+  static formatProfile(profile, precalculatedRealName = null) {
+    if (!profile) return null;
+
+    const realName =
+      precalculatedRealName ||
+      [profile.firstName || profile.first_name, profile.lastName || profile.last_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+    const photo =
+      profile.titlePhotoUrl ||
+      profile.title_photo_url ||
+      profile.avatarUrl ||
+      profile.avatar_url ||
+      null;
+
+    const maxRating =
+      profile.maxRating !== undefined && profile.maxRating !== null
+        ? profile.maxRating
+        : profile.max_rating !== undefined && profile.max_rating !== null
+        ? profile.max_rating
+        : profile.rating ?? 0;
+
     const responsePayload = {
       ...profile,
       realName: realName || null,
       fullName: realName || null,
-      max_rating: profile.maxRating,
-      avatar_url: profile.avatarUrl,
+      firstName: profile.firstName || profile.first_name || null,
+      first_name: profile.firstName || profile.first_name || null,
+      lastName: profile.lastName || profile.last_name || null,
+      last_name: profile.lastName || profile.last_name || null,
+      maxRating,
+      max_rating: maxRating,
+      avatarUrl: profile.avatarUrl || profile.avatar_url || photo,
+      avatar_url: profile.avatarUrl || profile.avatar_url || photo,
+      titlePhotoUrl: photo,
+      title_photo_url: photo,
     };
 
-    // Convert BigInt values cleanly before returning over Express JSON channels
     return JSON.parse(
       JSON.stringify(responsePayload, (_, value) =>
         typeof value === "bigint" ? Number(value) : value
@@ -89,28 +124,13 @@ export class CodeforcesService {
     );
   }
 
-  // 📍 NEW METHOD: Fetches saved profile details on dashboard initial load
+  // 📍 Fetches saved profile details on dashboard initial load
   static async getProfile(userId) {
     const profile = await prisma.codeforcesProfile.findUnique({
       where: { userId },
     });
 
     if (!profile) return null;
-
-    const realName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
-
-    const responsePayload = {
-      ...profile,
-      realName: realName || null,
-      fullName: realName || null,
-      max_rating: profile.maxRating,
-      avatar_url: profile.avatarUrl,
-    };
-
-    return JSON.parse(
-      JSON.stringify(responsePayload, (_, value) =>
-        typeof value === "bigint" ? Number(value) : value
-      )
-    );
+    return this.formatProfile(profile);
   }
 }

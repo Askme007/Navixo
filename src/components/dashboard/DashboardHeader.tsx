@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, User } from "lucide-react";
 import { NavixoLogo } from "../NavixoLogo";
 
 interface DashboardHeaderProps {
@@ -15,6 +15,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({
   userName,
   onSidebarToggle,
+  onNavigate,
   onLogoutClick,
 }: DashboardHeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -73,19 +74,38 @@ export function DashboardHeader({
                   exit={{ opacity: 0, y: -8 }}
                   className="user-menu-dropdown absolute right-0 top-full mt-2 w-44 bg-[#13151B]/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl z-50"
                 >
-                  <div className="p-2">
+                  <div className="p-1.5 space-y-1">
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onNavigate("profile");
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-all text-left"
+                    >
+                      <User className="w-4 h-4 text-purple-400" />
+                      <span
+                        style={{
+                          fontFamily: "Inter, sans-serif",
+                          fontSize: "13px",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Profile & Settings
+                      </span>
+                    </button>
+                    <div className="h-px bg-white/10 my-1" />
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
                         onLogoutClick();
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-all text-left"
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-red-500/10 rounded-lg text-white/60 hover:text-red-400 transition-all text-left"
                     >
                       <LogOut className="w-4 h-4" />
                       <span
                         style={{
                           fontFamily: "Inter, sans-serif",
-                          fontSize: "14px",
+                          fontSize: "13px",
                           fontWeight: 500,
                         }}
                       >

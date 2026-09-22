@@ -3,19 +3,66 @@ import { authService } from "../services/auth.service";
 import { dashboardService } from "../services/dashboard.service";
 
 export interface CodeforcesProfile {
-  id: number;
-  user_id: string;
+  id?: number | string;
+  user_id?: string;
+  userId?: string;
   username: string;
-  first_name: string | null;
-  last_name: string | null;
-  avatar_url: string | null;
-  title_photo_url: string | null;
+  first_name?: string | null;
+  firstName?: string | null;
+  last_name?: string | null;
+  lastName?: string | null;
+  avatar_url?: string | null;
+  avatarUrl?: string | null;
+  title_photo_url?: string | null;
+  titlePhotoUrl?: string | null;
   rating: number;
   max_rating: number;
+  maxRating?: number;
   rank: string;
-  max_rank: string | null;
+  max_rank?: string | null;
+  maxRank?: string | null;
   contests: number;
-  last_synced_at: string;
+  last_synced_at?: string;
+  lastSyncedAt?: string;
+}
+
+export function normalizeCodeforcesProfile(p: any): CodeforcesProfile | null {
+  if (!p || typeof p !== "object") return null;
+
+  const currentRating = Number(p.rating || 0);
+  const maxRating =
+    p.max_rating !== undefined && p.max_rating !== null && Number(p.max_rating) !== 0
+      ? Number(p.max_rating)
+      : p.maxRating !== undefined && p.maxRating !== null && Number(p.maxRating) !== 0
+      ? Number(p.maxRating)
+      : currentRating;
+
+  const photo =
+    p.title_photo_url ||
+    p.titlePhotoUrl ||
+    p.avatar_url ||
+    p.avatarUrl ||
+    null;
+
+  return {
+    ...p,
+    username: p.username || "",
+    rating: currentRating,
+    max_rating: maxRating,
+    maxRating: maxRating,
+    title_photo_url: photo,
+    titlePhotoUrl: photo,
+    avatar_url: p.avatar_url || p.avatarUrl || photo,
+    avatarUrl: p.avatarUrl || p.avatar_url || photo,
+    first_name: p.first_name || p.firstName || null,
+    firstName: p.firstName || p.first_name || null,
+    last_name: p.last_name || p.lastName || null,
+    lastName: p.lastName || p.last_name || null,
+    rank: p.rank || "unrated",
+    max_rank: p.max_rank || p.maxRank || p.rank || "unrated",
+    maxRank: p.maxRank || p.max_rank || p.rank || "unrated",
+    contests: Number(p.contests || 0),
+  };
 }
 
 interface CodeforcesCache {
@@ -29,16 +76,35 @@ function getUserId() {
   return authService.getUser()?.id ?? null;
 }
 
-function getCachedProfile(userId: string | null) {
-  return userId && codeforcesCache?.userId === userId
-    ? codeforcesCache.profile
-    : null;
+function getCachedProfile(userId: string | null): CodeforcesProfile | null {
+  if (!userId) return null;
+  if (codeforcesCache?.userId === userId) {
+    return codeforcesCache.profile;
+  }
+  try {
+    const raw = localStorage.getItem(`navixo_cf_cache_${userId}`);
+    if (raw) {
+      const parsed = normalizeCodeforcesProfile(JSON.parse(raw));
+      codeforcesCache = { userId, profile: parsed };
+      return parsed;
+    }
+  } catch {}
+  return null;
 }
 
-export function useCodeforcesSync() {
+function saveCachedProfile(userId: string, profile: CodeforcesProfile | null) {
+  const normalized = normalizeCodeforcesProfile(profile);
+  codeforcesCache = { userId, profile: normalized };
+  try {
+    localStorage.setItem(`navixo_cf_cache_${userId}`, JSON.stringify(normalized));
+  } catch {}
+}
+
+export function useCodeforcesSync(initialProfile?: CodeforcesProfile | null) {
   const mountedRef = useRef(true);
   const userId = getUserId();
-  const cachedProfile = getCachedProfile(userId);
+  const normalizedInitial = normalizeCodeforcesProfile(initialProfile);
+  const cachedProfile = normalizedInitial || getCachedProfile(userId);
   const [cfProfile, setCfProfile] = useState<CodeforcesProfile | null>(
     () => cachedProfile,
   );
@@ -54,20 +120,30 @@ export function useCodeforcesSync() {
   }, [cfUsername]);
 
   useEffect(() => {
+    if (initialProfile) {
+      const normalized = normalizeCodeforcesProfile(initialProfile);
+      setCfProfile(normalized);
+      setCfUsername(normalized?.username || "");
+      if (userId) saveCachedProfile(userId, normalized);
+    }
+  }, [initialProfile, userId]);
+
+  useEffect(() => {
     mountedRef.current = true;
 
     const load = async () => {
       try {
-        const data = (await dashboardService.getCodeforcesProfile()) as CodeforcesProfile | null;
+        const raw = await dashboardService.getCodeforcesProfile();
+        const data = normalizeCodeforcesProfile(raw);
         const currentUserId = getUserId();
 
-        if (currentUserId) {
-          codeforcesCache = { userId: currentUserId, profile: data };
+        if (currentUserId && data) {
+          saveCachedProfile(currentUserId, data);
         }
 
-        if (mountedRef.current) {
+        if (mountedRef.current && data) {
           setCfProfile(data);
-          setCfUsername(data?.username ?? "");
+          setCfUsername(data.username ?? "");
         }
       } catch (error) {
         // Keep cached data on a transient background-refresh failure.
@@ -111,14 +187,24 @@ export function useCodeforcesSync() {
         throw new Error(json.error ?? "Codeforces sync failed");
       }
 
-      const profile = (await dashboardService.getCodeforcesProfile()) as CodeforcesProfile;
+      const raw = await dashboardService.getCodeforcesProfile();
+      const profile = normalizeCodeforcesProfile(raw || json);
       const currentUserId = getUserId();
-      if (currentUserId) {
-        codeforcesCache = { userId: currentUserId, profile };
+      if (currentUserId && profile) {
+        saveCachedProfile(currentUserId, profile);
+        try {
+          const rawDash = localStorage.getItem(`navixo_dashboard_cache_${currentUserId}`);
+          if (rawDash) {
+            const parsed = JSON.parse(rawDash);
+            if (!parsed.platforms) parsed.platforms = {};
+            parsed.platforms.codeforces = profile;
+            localStorage.setItem(`navixo_dashboard_cache_${currentUserId}`, JSON.stringify(parsed));
+          }
+        } catch {}
       }
 
       setCfProfile(profile);
-      setCfUsername(profile.username ?? "");
+      setCfUsername(profile?.username ?? "");
       setEditingCf(false);
       onSuccess?.();
     } catch (error: unknown) {

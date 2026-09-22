@@ -1,25 +1,26 @@
-"use client";
+import { Toaster as Sonner, ToasterProps } from "sonner";
 
-import { useTheme } from "next-themes@0.4.6";
-import { Toaster as Sonner, ToasterProps } from "sonner@2.0.3";
-
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
+export const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="dark"
       className="toaster group"
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-        } as React.CSSProperties
-      }
+      toastOptions={{
+        classNames: {
+          toast:
+            "group toast group-[.toaster]:bg-[#13151B]/95 group-[.toaster]:backdrop-blur-xl group-[.toaster]:text-white group-[.toaster]:border-white/10 group-[.toaster]:shadow-2xl group-[.toaster]:rounded-2xl group-[.toaster]:px-4 group-[.toaster]:py-3.5",
+          description: "group-[.toast]:text-slate-400 text-xs",
+          actionButton:
+            "group-[.toast]:bg-purple-600 group-[.toast]:text-white group-[.toast]:rounded-xl text-xs font-medium",
+          cancelButton:
+            "group-[.toast]:bg-white/10 group-[.toast]:text-slate-300 group-[.toast]:rounded-xl text-xs",
+          closeButton:
+            "group-[.toast]:bg-white/10 group-[.toast]:text-white/70 hover:group-[.toast]:text-white group-[.toast]:border-white/10",
+        },
+      }}
       {...props}
     />
   );
 };
 
-export { Toaster };
+export default Toaster;

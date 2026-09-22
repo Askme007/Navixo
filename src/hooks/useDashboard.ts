@@ -15,6 +15,7 @@ export interface SavedRoadmap {
   careerGoal: string;
   generationStatus: string;
   createdAt: string;
+  isPublic?: boolean;
 }
 
 export interface ActivityItem {
@@ -41,6 +42,7 @@ interface TelemetryData {
   maxStreak: number;
   avgCompletion: number;
   trend?: unknown[];
+  mode?: string;
 }
 
 interface DashboardResponse {
@@ -50,9 +52,24 @@ interface DashboardResponse {
   activity: ActivityItem[];
   focusSteps: FocusStep[];
   telemetry?: TelemetryData;
+  platforms?: {
+    leetcode: any;
+    codeforces: any;
+  };
+  todayTasks?: any[] | null;
+  userState?: {
+    streak: number;
+    mode: string;
+    activeRoadmapId: string | null;
+  };
+  profile?: any;
+  memoryMetrics?: {
+    indexedSnippets: number;
+    semanticEngineActive: boolean;
+  } | null;
 }
 
-interface DashboardSnapshot {
+export interface DashboardSnapshot {
   activeRoadmap: SavedRoadmap | null;
   roadmapStatus: RoadmapStatus;
   savedRoadmaps: SavedRoadmap[];
@@ -60,6 +77,21 @@ interface DashboardSnapshot {
   activity: ActivityItem[];
   focusSteps: FocusStep[];
   telemetry: TelemetryData | null;
+  platforms?: {
+    leetcode: any;
+    codeforces: any;
+  } | null;
+  todayTasks?: any[] | null;
+  userState?: {
+    streak: number;
+    mode: string;
+    activeRoadmapId: string | null;
+  } | null;
+  profile?: any;
+  memoryMetrics?: {
+    indexedSnippets: number;
+    semanticEngineActive: boolean;
+  } | null;
 }
 
 interface DashboardCache {
@@ -67,10 +99,11 @@ interface DashboardCache {
   snapshot: DashboardSnapshot;
 }
 
-interface UseDashboardReturn extends DashboardSnapshot {
+export interface UseDashboardReturn extends DashboardSnapshot {
   loading: boolean;
   refreshDashboard: () => Promise<void>;
   deleteRoadmap: (id: string) => Promise<void>;
+  activateRoadmap: (id: string) => Promise<void>;
 }
 
 const emptySnapshot: DashboardSnapshot = {
@@ -81,20 +114,47 @@ const emptySnapshot: DashboardSnapshot = {
   activity: [],
   focusSteps: [],
   telemetry: null,
+  platforms: null,
+  todayTasks: null,
+  userState: null,
+  profile: null,
+  memoryMetrics: null,
 };
 
-// Route changes unmount Dashboard. Keep the latest user-specific snapshot at
-// module scope so returning from Roadmap or Chat can paint immediately.
 let dashboardCache: DashboardCache | null = null;
 
 function getUserId() {
   return authService.getUser()?.id ?? null;
 }
 
-function getCachedSnapshot(userId: string | null) {
-  return userId && dashboardCache?.userId === userId
-    ? dashboardCache.snapshot
-    : null;
+function getCachedSnapshot(userId: string | null): DashboardSnapshot | null {
+  if (!userId) return null;
+  if (dashboardCache?.userId === userId) {
+    return dashboardCache.snapshot;
+  }
+
+  // Hydrate from localStorage for 0ms frame-1 paint
+  try {
+    const raw = localStorage.getItem(`navixo_dashboard_cache_${userId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      dashboardCache = { userId, snapshot: parsed };
+      return parsed;
+    }
+  } catch {
+    // Non-fatal
+  }
+
+  return null;
+}
+
+function saveCachedSnapshot(userId: string, snapshot: DashboardSnapshot) {
+  dashboardCache = { userId, snapshot };
+  try {
+    localStorage.setItem(`navixo_dashboard_cache_${userId}`, JSON.stringify(snapshot));
+  } catch {
+    // Non-fatal quota or privacy error
+  }
 }
 
 function toSnapshot(data: DashboardResponse): DashboardSnapshot {
@@ -106,6 +166,11 @@ function toSnapshot(data: DashboardResponse): DashboardSnapshot {
     activity: data.activity ?? [],
     focusSteps: data.focusSteps ?? [],
     telemetry: data.telemetry ?? null,
+    platforms: data.platforms ?? null,
+    todayTasks: data.todayTasks ?? null,
+    userState: data.userState ?? null,
+    profile: data.profile ?? null,
+    memoryMetrics: data.memoryMetrics ?? null,
   };
 }
 
@@ -121,8 +186,7 @@ export function useDashboard(): UseDashboardReturn {
     const userId = getUserId();
     const cachedSnapshot = getCachedSnapshot(userId);
 
-    // Skeletons are reserved for the first load. On every later visit we keep
-    // the last complete dashboard visible and update it in the background.
+    // Only set loading true if there is no cache at all
     if (!cachedSnapshot && mountedRef.current) {
       setLoading(true);
     }
@@ -132,7 +196,7 @@ export function useDashboard(): UseDashboardReturn {
       const nextSnapshot = toSnapshot(data);
 
       if (userId) {
-        dashboardCache = { userId, snapshot: nextSnapshot };
+        saveCachedSnapshot(userId, nextSnapshot);
       }
 
       if (mountedRef.current) {
@@ -140,9 +204,6 @@ export function useDashboard(): UseDashboardReturn {
       }
     } catch (error) {
       console.error("Dashboard load failed:", error);
-
-      // A transient refresh failure should never erase an already visible
-      // dashboard. Only the first load falls back to its empty state.
       if (!cachedSnapshot && mountedRef.current) {
         setSnapshot(emptySnapshot);
       }
@@ -173,7 +234,7 @@ export function useDashboard(): UseDashboardReturn {
     setSnapshot(nextSnapshot);
     const userId = getUserId();
     if (userId) {
-      dashboardCache = { userId, snapshot: nextSnapshot };
+      saveCachedSnapshot(userId, nextSnapshot);
     }
 
     try {
@@ -195,9 +256,52 @@ export function useDashboard(): UseDashboardReturn {
       console.error("Delete failed:", error);
       setSnapshot(previousSnapshot);
       if (userId) {
-        dashboardCache = { userId, snapshot: previousSnapshot };
+        saveCachedSnapshot(userId, previousSnapshot);
       }
+      throw error;
+    }
+  };
+
+  const activateRoadmap = async (id: string) => {
+    const target = snapshot.savedRoadmaps.find((r) => r.id === id);
+    if (!target) return;
+
+    const previousSnapshot = snapshot;
+    const nextSnapshot: DashboardSnapshot = {
+      ...snapshot,
+      activeRoadmap: target,
+    };
+
+    setSnapshot(nextSnapshot);
+    const userId = getUserId();
+    if (userId) {
+      saveCachedSnapshot(userId, nextSnapshot);
+    }
+
+    try {
+      const baseUrl =
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_API_URL ||
+        "http://localhost:3001";
+      const response = await fetch(`${baseUrl}/api/roadmap/activate/${id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${authService.getToken()}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to activate roadmap");
+      }
+
       await refreshDashboard();
+    } catch (error) {
+      console.error("Activate failed:", error);
+      setSnapshot(previousSnapshot);
+      if (userId) {
+        saveCachedSnapshot(userId, previousSnapshot);
+      }
+      throw error;
     }
   };
 
@@ -206,5 +310,6 @@ export function useDashboard(): UseDashboardReturn {
     loading,
     refreshDashboard,
     deleteRoadmap,
+    activateRoadmap,
   };
 }

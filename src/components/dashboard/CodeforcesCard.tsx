@@ -58,7 +58,7 @@ const getAbsoluteUrl = (url?: string | null) => {
   return url;
 };
 
-export function CodeforcesCard() {
+export function CodeforcesCard({ initialProfile }: { initialProfile?: any } = {}) {
   const {
     cfProfile,
     cfUsername,
@@ -68,7 +68,7 @@ export function CodeforcesCard() {
     syncingCf,
     cfError,
     syncCodeforces,
-  } = useCodeforcesSync();
+  } = useCodeforcesSync(initialProfile);
 
   const handleSave = async () => {
     if (!cfUsername.trim()) return;
@@ -144,18 +144,31 @@ export function CodeforcesCard() {
       ) : (
         <div className="flex flex-col flex-1">
           {(() => {
-            const currentRankMeta = getRankMetaFromRating(cfProfile.rating);
-            const maxRatingMeta = getRankMetaFromRating(cfProfile.max_rating);
-            const badgeMeta = getRankMeta(cfProfile.rank);
+            const currentRating = cfProfile.rating ?? 0;
+            const maxRating =
+              cfProfile.max_rating !== undefined && cfProfile.max_rating !== null && cfProfile.max_rating !== 0
+                ? cfProfile.max_rating
+                : cfProfile.maxRating !== undefined && cfProfile.maxRating !== null && cfProfile.maxRating !== 0
+                ? cfProfile.maxRating
+                : currentRating;
 
-            const fullName = [cfProfile.first_name, cfProfile.last_name]
+            const currentRankMeta = getRankMetaFromRating(currentRating);
+            const maxRatingMeta = getRankMetaFromRating(maxRating);
+            const badgeMeta = getRankMeta(cfProfile.rank || cfProfile.max_rank || cfProfile.maxRank);
+
+            const fullName = [
+              cfProfile.first_name || cfProfile.firstName,
+              cfProfile.last_name || cfProfile.lastName,
+            ]
               .filter(Boolean)
               .join(" ")
               .trim();
 
             const avatarSrc =
               getAbsoluteUrl(cfProfile.title_photo_url) ||
+              getAbsoluteUrl(cfProfile.titlePhotoUrl) ||
               getAbsoluteUrl(cfProfile.avatar_url) ||
+              getAbsoluteUrl(cfProfile.avatarUrl) ||
               "/code-forces.svg";
 
             return (
@@ -239,7 +252,7 @@ export function CodeforcesCard() {
                       className="font-bold text-lg sm:text-xl"
                       style={{ color: maxRatingMeta.color }}
                     >
-                      {cfProfile.max_rating}
+                      {maxRating}
                     </p>
                   </div>
                   <div className="bg-white/5 rounded-xl p-3 text-center border border-white/5">

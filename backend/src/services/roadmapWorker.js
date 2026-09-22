@@ -1,7 +1,77 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { prisma } from "../config/prisma.js";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const roadmapResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    steps: {
+      type: SchemaType.ARRAY,
+      description: "List of learning roadmap steps in chronological order.",
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          title: {
+            type: SchemaType.STRING,
+            description: "Step title, e.g., 'Phase 1: Foundations'",
+          },
+          description: {
+            type: SchemaType.STRING,
+            description: "Detailed 3-4 sentence execution plan for this step.",
+          },
+          level: {
+            type: SchemaType.STRING,
+            description: "Level: beginner, intermediate, or advanced",
+          },
+          duration: {
+            type: SchemaType.STRING,
+            description: "Estimated duration, e.g., '3 weeks'.",
+          },
+          mentor_tip: {
+            type: SchemaType.STRING,
+            description: "Insider industry advice or actionable mentor recommendation.",
+          },
+          resources: {
+            type: SchemaType.ARRAY,
+            description: "Curated learning resources for this step.",
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                type: {
+                  type: SchemaType.STRING,
+                  description: "Resource type: youtube, course, docs, or project.",
+                },
+                title: {
+                  type: SchemaType.STRING,
+                  description: "Title of the resource.",
+                },
+                provider: {
+                  type: SchemaType.STRING,
+                  description: "Platform or publisher, e.g., 'FreeCodeCamp', 'MDN', 'Coursera'.",
+                },
+                url: {
+                  type: SchemaType.STRING,
+                  description: "Searchable query or link.",
+                },
+              },
+              required: ["type", "title", "provider"],
+            },
+          },
+        },
+        required: [
+          "title",
+          "description",
+          "level",
+          "duration",
+          "mentor_tip",
+          "resources",
+        ],
+      },
+    },
+  },
+  required: ["steps"],
+};
 
 function extractJson(text) {
   if (!text) {
@@ -49,11 +119,12 @@ async function updateRoadmapStatus(roadmapId, status, errorMessage = null) {
 }
 
 async function generateRoadmap(careerGoal) {
-  // 1. STRICT JSON ENFORCEMENT
+  // 1. STRICT JSON ENFORCEMENT VIA RESPONSE SCHEMA
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash", // Upgraded to 2.5-flash for superior schema adherence
+    model: "gemini-2.5-flash",
     generationConfig: {
       responseMimeType: "application/json",
+      responseSchema: roadmapResponseSchema,
     },
   });
 

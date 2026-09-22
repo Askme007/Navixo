@@ -344,7 +344,7 @@ export function ChatbotPage({
           </div>
 
           <div className="flex items-center gap-2">
-            <ChatAnalysisSidebar />
+            <ChatAnalysisSidebar onSelectPrompt={(prompt) => setInput(prompt)} />
             <span className="hidden max-w-[120px] truncate text-xs text-purple-300 md:block ml-1 border-l border-purple-500/20 pl-3 font-medium">
               {userName}
             </span>

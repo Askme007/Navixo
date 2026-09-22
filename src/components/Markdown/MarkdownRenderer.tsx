@@ -249,9 +249,12 @@ export function MarkdownRenderer({
               />
             );
           },
-          // Blockquotes
+          // Blockquotes with high-tech execution styling
           blockquote: ({ node, children, ...props }) => (
-            <blockquote className={styles.blockquote} {...props}>
+            <blockquote
+              className="my-3 border-l-4 border-cyan-400 bg-gradient-to-r from-purple-950/40 to-cyan-950/20 py-2.5 px-4 rounded-r-xl border border-white/10 text-cyan-200 font-medium text-sm shadow-[0_0_25px_rgba(6,182,212,0.15)] backdrop-blur-md"
+              {...props}
+            >
               {children}
             </blockquote>
           ),

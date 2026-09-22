@@ -88,6 +88,7 @@ model UserRoadmap {
   generationError      String?       @map("generation_error")
   generationStartedAt  DateTime?     @map("generation_started_at") @db.Timestamptz(6)
   generationFinishedAt DateTime?     @map("generation_finished_at") @db.Timestamptz(6)
+  isPublic             Boolean?      @default(false) @map("is_public")
   steps                RoadmapStep[] @relation("RoadmapSteps")
 
   @@map("user_roadmaps")

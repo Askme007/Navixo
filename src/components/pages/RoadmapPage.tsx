@@ -9,6 +9,7 @@ import { authService } from "../../services/auth.service";
 import {
   ArrowLeft,
   BookOpen,
+  Check,
   CheckCircle2,
   Circle,
   Clock,
@@ -28,6 +29,14 @@ import { ShareButton } from "../ShareButton";
 import { DownloadPDFButton } from "../DownloadPDFButton";
 import { SaveRoadmapButton } from "../SaveRoadmapButton";
 import { SavedConfirmationPopup } from "../SavedConfirmationPopup";
+import { NotFoundPage } from "./NotFoundPage";
+import { toast } from "sonner";
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUUID(val?: string | null): boolean {
+  return typeof val === "string" && UUID_REGEX.test(val.trim());
+}
 
 type GenerationStatus =
   | "idle"
@@ -394,8 +403,16 @@ export function RoadmapPage({
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
   const [processMsgIndex, setProcessMsgIndex] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isActiveFocus, setIsActiveFocus] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [pollTrigger, setPollTrigger] = useState(0);
+  const [isNotFound, setIsNotFound] = useState(false);
+  const [isPrivateRoadmap, setIsPrivateRoadmap] = useState(false);
+  const [isOwner, setIsOwner] = useState(true);
+  const [isPublic, setIsPublic] = useState(false);
 
   const { roadmapId } = useParams();
   const navigate = useNavigate();
@@ -414,22 +431,42 @@ export function RoadmapPage({
   const progressPercentage =
     totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  const loadLatestRoadmap = useCallback(async () => {
-    if (!roadmapId) return;
+  const loadLatestRoadmap = useCallback(async (): Promise<GenerationStatus | null> => {
+    if (!roadmapId) return null;
+
+    if (!isValidUUID(roadmapId)) {
+      setIsNotFound(true);
+      return "failed";
+    }
 
     try {
       const token = authService.getToken();
-      if (!token) {
-        throw new Error("Not authenticated");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
       }
 
       const response = await fetch(`${API_URL}/api/roadmap/${roadmapId}`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers,
       });
+
+      if (response.status === 404) {
+        const errData = await response.json().catch(() => ({}));
+        if (errData?.isPrivate) {
+          setIsPrivateRoadmap(true);
+        } else {
+          setIsNotFound(true);
+        }
+        return "failed";
+      }
+
+      if (response.status === 401) {
+        navigate("/auth");
+        return "failed";
+      }
 
       if (!response.ok) {
         throw new Error("Failed to load roadmap from backend API");
@@ -438,10 +475,10 @@ export function RoadmapPage({
       const roadmap = await response.json();
 
       if (!roadmap) {
-        setGenerationStatus("failed");
+        setIsNotFound(true);
         setRoadmapNodes([]);
         setExpandedStepId(null);
-        return;
+        return "failed";
       }
 
       const nextGenerationStatus: GenerationStatus =
@@ -454,13 +491,16 @@ export function RoadmapPage({
 
       setGenerationStatus(nextGenerationStatus);
       setInput(roadmap.title ?? roadmap.careerGoal ?? "");
+      setIsActiveFocus(Boolean(roadmap.isActive));
+      setIsOwner(roadmap.isOwner !== false);
+      setIsPublic(Boolean(roadmap.isPublic));
 
       const steps = roadmap.steps ?? [];
 
       if (!steps.length) {
         setRoadmapNodes([]);
         setExpandedStepId(null);
-        return;
+        return nextGenerationStatus;
       }
 
       const rebuiltNodes: RoadmapNode[] = steps.map((step: any) => ({
@@ -486,33 +526,73 @@ export function RoadmapPage({
           ? current
           : (rebuiltNodes[0]?.id ?? null),
       );
+
+      return nextGenerationStatus;
     } catch (error) {
       console.error("Failed to load roadmap details:", error);
       setGenerationStatus("failed");
+      return "failed";
     }
   }, [roadmapId, API_URL]);
 
   useEffect(() => {
+    setIsNotFound(false);
+    setIsPrivateRoadmap(false);
     setShowPopup(false);
+    setIsSaved(false);
+    setIsActiveFocus(false);
+    setIsPublic(false);
     setProcessMsgIndex(0);
     if (!roadmapId) {
       setGenerationStatus("idle");
       setInput("");
+    } else if (!isValidUUID(roadmapId)) {
+      setIsNotFound(true);
     }
   }, [roadmapId]);
 
   useEffect(() => {
-    if (!roadmapId) return;
+    if (!roadmapId || !isValidUUID(roadmapId) || isNotFound || isPrivateRoadmap) return;
 
-    // Immediately trigger first fetch
-    loadLatestRoadmap();
+    let isSubscribed = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let attempts = 0;
+    const MAX_POLL_ATTEMPTS = 30; // 30 attempts * 2s = 60s max polling limit
 
-    const timer = setInterval(async () => {
-      await loadLatestRoadmap();
-    }, 2000);
+    const stopPolling = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
 
-    return () => clearInterval(timer);
-  }, [roadmapId, loadLatestRoadmap]);
+    const poll = async () => {
+      attempts++;
+      const status = await loadLatestRoadmap();
+      if (!isSubscribed) return;
+
+      // Stop polling once the roadmap is completed, failed, or timed out
+      if (
+        status === "completed" ||
+        status === "failed" ||
+        status === null ||
+        attempts >= MAX_POLL_ATTEMPTS
+      ) {
+        stopPolling();
+        if (attempts >= MAX_POLL_ATTEMPTS && status !== "completed") {
+          console.warn("Roadmap generation polling timed out after 60 seconds.");
+        }
+      }
+    };
+
+    timer = setInterval(poll, 2000);
+    poll();
+
+    return () => {
+      isSubscribed = false;
+      stopPolling();
+    };
+  }, [roadmapId, pollTrigger, loadLatestRoadmap, isNotFound]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -564,7 +644,7 @@ export function RoadmapPage({
     } catch (error: any) {
       console.error("Generate failed:", error);
       setGenerationStatus("failed");
-      alert(error?.message || "Failed to generate roadmap.");
+      toast.error(error?.message || "Failed to generate roadmap.");
     }
   };
 
@@ -578,6 +658,11 @@ export function RoadmapPage({
     stepId: string,
     newStatus: RoadmapStatus,
   ) => {
+    if (!isOwner) {
+      toast.info("This is a shared roadmap. Create your own roadmap to track your personal progress!");
+      return;
+    }
+
     setStatusUpdatingId(stepId);
 
     try {
@@ -610,8 +695,11 @@ export function RoadmapPage({
       if (!response.ok) {
         throw new Error("Failed to patch status on Express API.");
       }
+
+      toast.success(`Step status updated to ${newStatus}`);
     } catch (error) {
       console.error("Failed to update step status:", error);
+      toast.error("Failed to update step status");
       await loadLatestRoadmap();
     } finally {
       setStatusUpdatingId(null);
@@ -643,16 +731,87 @@ export function RoadmapPage({
       }
 
       setShowPopup(true);
+      setIsSaved(true);
+      toast.success("Roadmap saved to your library!");
     } catch (error: any) {
       console.error("Save failed:", error);
-      alert(error?.message || "Failed to save roadmap.");
+      toast.error(error?.message || "Failed to save roadmap.");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleActivateFocus = async () => {
+    if (!roadmapId || isActivating) return;
+
+    try {
+      setIsActivating(true);
+      const token = authService.getToken();
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      const response = await fetch(`${API_URL}/api/roadmap/${roadmapId}/activate`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to activate roadmap");
+      }
+
+      setIsActiveFocus(true);
+      toast.success("Roadmap set as your active focus!");
+    } catch (error: any) {
+      console.error("Failed to activate roadmap:", error);
+      toast.error(error?.message || "Failed to set roadmap as active focus.");
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
+  const handleToggleVisibility = async (newVal: boolean) => {
+    if (!roadmapId) return;
+    try {
+      const token = authService.getToken();
+      if (!token) {
+        toast.error("Please sign in to modify sharing settings.");
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/roadmap/${roadmapId}/visibility`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ isPublic: newVal }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "Failed to update roadmap visibility");
+      }
+
+      setIsPublic(newVal);
+      toast.success(
+        newVal
+          ? "Link sharing enabled! Anyone with this link can view."
+          : "Roadmap is now private. Only you can view."
+      );
+    } catch (error: any) {
+      console.error("Failed to toggle visibility:", error);
+      toast.error(error?.message || "Failed to update link sharing.");
+      throw error;
+    }
+  };
+
   const handleRetry = async () => {
     try {
+      toast.info("Retrying roadmap generation...");
       if (roadmapId) {
         const token = authService.getToken();
         if (!token) {
@@ -668,13 +827,14 @@ export function RoadmapPage({
         });
       }
 
-      setGenerationStatus("idle");
+      setGenerationStatus("processing");
       setRoadmapNodes([]);
       setExpandedStepId(null);
       setProcessMsgIndex(0);
+      setPollTrigger((prev) => prev + 1);
     } catch (error) {
       console.error("Retry failed:", error);
-      setGenerationStatus("idle");
+      setGenerationStatus("failed");
     }
   };
 
@@ -693,8 +853,30 @@ export function RoadmapPage({
     setRoadmapNodes([]);
     setExpandedStepId(null);
     setProcessMsgIndex(0);
+    setIsSaved(false);
+    setIsActiveFocus(false);
     navigate("/roadmap", { replace: true });
   };
+
+  if (isPrivateRoadmap) {
+    return (
+      <NotFoundPage
+        title="This Roadmap is Private"
+        description="The creator has not enabled public link sharing for this roadmap. If you are the owner, please sign in to view it."
+        showNewRoadmapButton={true}
+      />
+    );
+  }
+
+  if (isNotFound) {
+    return (
+      <NotFoundPage
+        title="Roadmap Not Found"
+        description="The roadmap you are looking for does not exist, has an invalid link, or may have been deleted."
+        showNewRoadmapButton={true}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0B0B0F] text-white">
@@ -709,7 +891,9 @@ export function RoadmapPage({
               className="h-10 gap-2 border border-transparent px-3 text-sm text-white hover:border-white/10 hover:bg-white/5"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Dashboard</span>
+              <span className="hidden sm:inline">
+                {authService.isAuthenticated() ? "Dashboard" : "Home"}
+              </span>
             </Button>
 
             <div className="min-w-0">
@@ -726,17 +910,28 @@ export function RoadmapPage({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden max-w-[140px] truncate text-sm text-slate-300 md:block">
-              {userName}
-            </span>
-            <Button
-              variant="outline"
-              onClick={onLogout}
-              className="h-10 gap-2 border-white/15 bg-transparent px-3 text-sm text-white hover:bg-white/5"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
+            {authService.isAuthenticated() ? (
+              <>
+                <span className="hidden max-w-[140px] truncate text-sm text-slate-300 md:block">
+                  {userName}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={onLogout}
+                  className="h-10 gap-2 border-white/15 bg-transparent px-3 text-sm text-white hover:bg-white/5"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => navigate("/auth")}
+                className="h-9 gap-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 px-4 text-xs font-semibold text-white shadow-lg shadow-purple-500/20"
+              >
+                <span>Sign In</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -917,35 +1112,59 @@ export function RoadmapPage({
           )}
 
           {hasRoadmap && (
-            <div className="space-y-3 sm:space-y-4">
-              {roadmapNodes.map((step, index) => {
-                const expanded = expandedStepId === step.id;
+            <>
+              {!isOwner && (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-purple-950/30 border border-purple-500/30 text-white">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-5 h-5 text-purple-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-purple-100">
+                        Viewing Shared Roadmap
+                      </p>
+                      <p className="text-xs text-purple-300/80">
+                        This roadmap was shared with you. You can study all curated resources or create your own custom roadmap.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleNewRoadmap}
+                    className="shrink-0 h-9 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-4 shadow-lg shadow-purple-500/20"
+                  >
+                    Create My Own Roadmap
+                  </Button>
+                </div>
+              )}
 
-                return (
-                  <RoadmapStepCard
-                    key={step.id}
-                    step={step}
-                    index={index}
-                    expanded={expanded}
-                    statusUpdating={statusUpdatingId === step.id}
-                    onToggle={() =>
-                      setExpandedStepId((current) =>
-                        current === step.id ? null : step.id,
-                      )
-                    }
-                    onStatusChange={handleStatusChange}
-                    onAskMentor={
-                      onNavigateToChat
-                        ? () =>
-                            onNavigateToChat(
-                              `I need help with this roadmap step.\n\nStep: ${step.title}\nDescription: ${step.description}\nDuration: ${step.duration}\nLevel: ${step.level}\n\nGive me a short action plan and common mistakes to avoid.`,
-                            )
-                        : undefined
-                    }
-                  />
-                );
-              })}
-            </div>
+              <div className="space-y-3 sm:space-y-4">
+                {roadmapNodes.map((step, index) => {
+                  const expanded = expandedStepId === step.id;
+
+                  return (
+                    <RoadmapStepCard
+                      key={step.id}
+                      step={step}
+                      index={index}
+                      expanded={expanded}
+                      statusUpdating={statusUpdatingId === step.id}
+                      onToggle={() =>
+                        setExpandedStepId((current) =>
+                          current === step.id ? null : step.id,
+                        )
+                      }
+                      onStatusChange={handleStatusChange}
+                      onAskMentor={
+                        onNavigateToChat
+                          ? () =>
+                              onNavigateToChat(
+                                `I need help with this roadmap step.\n\nStep: ${step.title}\nDescription: ${step.description}\nDuration: ${step.duration}\nLevel: ${step.level}\n\nGive me a short action plan and common mistakes to avoid.`,
+                              )
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </>
           )}
 
           {generationStatus === "completed" && !hasRoadmap && (
@@ -968,16 +1187,56 @@ export function RoadmapPage({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {roadmapId && hasRoadmap && (
-                    <SaveRoadmapButton
-                      isSaving={isSaving}
-                      onClick={handleSaveRoadmap}
-                      className="rounded-2xl border border-white/10 bg-transparent text-white hover:bg-white/5"
-                    />
+                  {roadmapId && hasRoadmap && isOwner && (
+                    <>
+                      <SaveRoadmapButton
+                        isSaving={isSaving}
+                        isSaved={isSaved}
+                        onClick={handleSaveRoadmap}
+                        className="rounded-2xl border border-white/10 bg-transparent text-white hover:bg-white/5"
+                      />
+
+                      <Button
+                        variant="outline"
+                        onClick={handleActivateFocus}
+                        disabled={isActiveFocus || isActivating}
+                        className={`gap-1.5 md:gap-2 border text-xs md:text-sm rounded-2xl transition-all ${
+                          isActiveFocus
+                            ? "border-purple-500/40 bg-purple-500/20 text-purple-200"
+                            : "border-white/10 bg-transparent text-white hover:bg-white/5"
+                        }`}
+                      >
+                        {isActivating ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : isActiveFocus ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Active Focus</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Set as Active Focus</span>
+                          </>
+                        )}
+                      </Button>
+                    </>
                   )}
 
-                  <DownloadPDFButton className="rounded-2xl border border-white/10 bg-transparent text-white hover:bg-white/5" />
-                  <ShareButton className="rounded-2xl border border-white/10 bg-transparent text-white hover:bg-white/5" />
+                  <DownloadPDFButton
+                    roadmapTitle={input || "Career Roadmap"}
+                    careerGoal={input}
+                    steps={roadmapNodes}
+                    className="rounded-2xl border border-white/10 bg-transparent text-white hover:bg-white/5"
+                  />
+                  <ShareButton
+                    roadmapId={roadmapId}
+                    roadmapTitle={input || "Career Roadmap"}
+                    isPublic={isPublic}
+                    isOwner={isOwner}
+                    onToggleVisibility={handleToggleVisibility}
+                    className="rounded-2xl border border-white/10 bg-transparent text-white hover:bg-white/5"
+                  />
 
                   {hasRoadmap && (
                     <Button

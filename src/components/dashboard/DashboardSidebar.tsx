@@ -1,7 +1,7 @@
 // src\components\dashboard\DashboardSidebar.tsx
 
 import { motion, AnimatePresence } from "motion/react";
-import { LayoutDashboard, Map, MessageSquare, X } from "lucide-react";
+import { LayoutDashboard, Map, MessageSquare, UserCircle, X } from "lucide-react";
 import { NavixoLogo } from "../NavixoLogo";
 
 interface DashboardSidebarProps {
@@ -26,6 +26,12 @@ export function DashboardSidebar({
     },
     { id: "roadmap", label: "Roadmap", icon: Map, path: "roadmap" },
     { id: "chat", label: "Ask Navixo", icon: MessageSquare, path: "chat" },
+    {
+      id: "profile",
+      label: "Profile & Settings",
+      icon: UserCircle,
+      path: "profile",
+    },
   ];
 
   return (
