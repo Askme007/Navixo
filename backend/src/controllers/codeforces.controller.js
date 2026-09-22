@@ -5,8 +5,9 @@ export async function syncCodeforces(req, res) {
     const { username } = req.body;
 
     if (!username) {
-      return res.status(400).json({
-        error: "Username is required",
+      return res.json({
+        success: false,
+        error: "Codeforces handle is required",
       });
     }
 
@@ -15,11 +16,12 @@ export async function syncCodeforces(req, res) {
       username
     );
 
-    res.json(profile);
+    res.json({ success: true, ...profile });
   } catch (err) {
-    console.error(err);
+    console.warn("Codeforces sync notice:", err.message);
 
-    res.status(500).json({
+    res.json({
+      success: false,
       error: err.message || "Failed to sync Codeforces profile",
     });
   }

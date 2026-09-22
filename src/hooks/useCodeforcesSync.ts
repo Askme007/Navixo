@@ -190,7 +190,7 @@ export function useCodeforcesSync(initialProfile?: CodeforcesProfile | null) {
       );
 
       const json = await response.json();
-      if (!response.ok || json.error) {
+      if (!response.ok || json.error || json.success === false) {
         throw new Error(json.error ?? "Codeforces sync failed");
       }
 

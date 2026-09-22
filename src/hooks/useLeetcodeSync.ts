@@ -90,9 +90,8 @@ export function useLeetcodeSync(initialProfile?: LeetcodeProfile | null) {
           setLeetcodeProfile(data);
           setLeetcodeUsername(data?.username ?? "");
         }
-      } catch (error) {
-        // Preserve a cached profile when a background refresh is unavailable.
-        console.error(error);
+      } catch {
+        // Preserve a cached profile quietly when a background refresh is unavailable.
       }
     };
 
@@ -128,7 +127,7 @@ export function useLeetcodeSync(initialProfile?: LeetcodeProfile | null) {
       );
 
       const json = await response.json();
-      if (!response.ok || json.error) {
+      if (!response.ok || json.error || json.success === false) {
         throw new Error(json.error ?? "LeetCode sync failed");
       }
 

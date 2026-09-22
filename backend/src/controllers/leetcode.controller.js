@@ -5,7 +5,8 @@ export async function syncLeetcode(req, res) {
     const { username } = req.body;
 
     if (!username) {
-      return res.status(400).json({
+      return res.json({
+        success: false,
         error: "Username is required",
       });
     }
@@ -15,11 +16,12 @@ export async function syncLeetcode(req, res) {
       username
     );
 
-    res.json(profile);  
+    res.json({ success: true, ...profile });  
   } catch (err) {
-    console.error(err);
+    console.warn("LeetCode sync notice:", err.message);
 
-    res.status(500).json({
+    res.json({
+      success: false,
       error: err.message || "Failed to sync LeetCode profile",
     });
   }

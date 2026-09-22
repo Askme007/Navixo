@@ -233,7 +233,7 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
         body: JSON.stringify({ username: leetcodeUsername.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "LeetCode sync failed");
+      if (!res.ok || data.success === false || data.error) throw new Error(data.error || "LeetCode sync failed");
       setLeetcodeData(data);
 
       const userId = authService.getUser()?.id;
@@ -275,7 +275,7 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
         body: JSON.stringify({ username: codeforcesUsername.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Codeforces sync failed");
+      if (!res.ok || data.success === false || data.error) throw new Error(data.error || "Codeforces sync failed");
       setCodeforcesData(data);
 
       const userId = authService.getUser()?.id;

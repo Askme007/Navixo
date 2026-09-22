@@ -81,21 +81,22 @@ router.post("/leetcode/sync", async (req, res) => {
     const { username } = req.body;
 
     if (!username) {
-      return res.status(400).json({ error: "Username is required" });
+      return res.json({ success: false, error: "Username is required" });
     }
 
     const profile = await LeetcodeService.syncProfile(req.user.id, username);
 
-    res.json(
-      JSON.parse(
+    res.json({
+      success: true,
+      ...JSON.parse(
         JSON.stringify(profile, (_, value) =>
           typeof value === "bigint" ? Number(value) : value
         )
-      )
-    );
+      ),
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.warn("LeetCode sync notice:", err.message);
+    res.json({ success: false, error: err.message || "Failed to sync LeetCode profile" });
   }
 });
 
@@ -111,8 +112,8 @@ router.get(["/codeforces", "/codeforces/profile"], async (req, res) => {
     const profile = await CodeforcesService.getProfile(req.user.id);
     return res.json(profile || null);
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Failed to retrieve platform data" });
+    console.warn("Failed to retrieve Codeforces data:", error.message);
+    return res.json(null);
   }
 });
 
@@ -123,16 +124,16 @@ router.post(["/codeforces", "/codeforces/sync"], async (req, res) => {
     const { username } = req.body;
 
     if (!username) {
-      return res.status(400).json({ error: "Handle required" });
+      return res.json({ success: false, error: "Codeforces handle is required" });
     }
 
     // Delegate execution to our robust service layer
     const profile = await CodeforcesService.syncProfile(req.user.id, username);
 
-    return res.json(profile);
+    return res.json({ success: true, ...profile });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message });
+    console.warn("Codeforces sync notice:", err.message);
+    return res.json({ success: false, error: err.message || "Failed to sync Codeforces profile" });
   }
 });
 
