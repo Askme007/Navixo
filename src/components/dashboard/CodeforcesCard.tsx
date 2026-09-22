@@ -177,7 +177,13 @@ export function CodeforcesCard({ initialProfile }: { initialProfile?: any } = {}
       </div>
 
       {!cfProfile || editingCf ? (
-        <div className="space-y-3 mt-auto mb-auto">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-3 mt-auto mb-auto"
+        >
           <p className="text-sm text-white/50 mb-2">
             Connect your Codeforces handle to integrate contest ratings.
           </p>
@@ -185,10 +191,17 @@ export function CodeforcesCard({ initialProfile }: { initialProfile?: any } = {}
             placeholder="Codeforces Handle"
             value={cfUsername}
             onChange={(e) => setCfUsername(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSave();
+              }
+            }}
             className="bg-white/5 border-white/10 text-white focus:border-[#8B5CF6]"
           />
           <div className="flex gap-2">
             <Button
+              type="submit"
               onClick={handleSave}
               disabled={syncingCf || !cfUsername}
               className="flex-1 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-xl"
@@ -197,6 +210,7 @@ export function CodeforcesCard({ initialProfile }: { initialProfile?: any } = {}
             </Button>
             {cfProfile && editingCf && (
               <Button
+                type="button"
                 onClick={() => {
                   setEditingCf(false);
                   setCfUsername(cfProfile.username);
@@ -209,7 +223,7 @@ export function CodeforcesCard({ initialProfile }: { initialProfile?: any } = {}
             )}
           </div>
           {cfError && <p className="text-red-400 text-xs mt-2">{cfError}</p>}
-        </div>
+        </form>
       ) : (
         <div className="flex flex-col flex-1">
           {(() => {

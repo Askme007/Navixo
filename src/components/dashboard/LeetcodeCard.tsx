@@ -59,7 +59,13 @@ export function LeetcodeCard({ initialProfile }: { initialProfile?: any } = {}) 
       </div>
 
       {!leetcodeProfile || editingLc ? (
-        <div className="space-y-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+          className="space-y-3"
+        >
           <p className="text-sm text-white/50">
             Connect your LeetCode profile to track competitive programming
             metrics.
@@ -69,11 +75,18 @@ export function LeetcodeCard({ initialProfile }: { initialProfile?: any } = {}) 
             placeholder="LeetCode Username"
             value={leetcodeUsername}
             onChange={(e) => setLeetcodeUsername(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSave();
+              }
+            }}
             className="bg-white/5 border-white/10 text-white focus:border-[#FFA116]"
           />
 
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
+              type="submit"
               onClick={handleSave}
               disabled={syncingLeetcode || !leetcodeUsername}
               className="w-full sm:flex-1 bg-[#FFA116]/20 text-[#FFA116] hover:bg-[#FFA116]/30 rounded-xl"
@@ -83,6 +96,7 @@ export function LeetcodeCard({ initialProfile }: { initialProfile?: any } = {}) 
 
             {leetcodeProfile && editingLc && (
               <Button
+                type="button"
                 onClick={() => {
                   setEditingLc(false);
                   setLeetcodeUsername(leetcodeProfile.username);
@@ -96,7 +110,7 @@ export function LeetcodeCard({ initialProfile }: { initialProfile?: any } = {}) 
           </div>
 
           {lcError && <p className="text-red-400 text-xs mt-2">{lcError}</p>}
-        </div>
+        </form>
       ) : (
         <>
           {(() => {

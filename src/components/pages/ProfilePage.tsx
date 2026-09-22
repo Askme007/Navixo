@@ -667,6 +667,12 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
                       <Input
                         value={leetcodeUsername}
                         onChange={(e) => setLeetcodeUsername(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSyncLeetcode();
+                          }
+                        }}
                         placeholder="LeetCode username"
                         className="bg-black/50 border-white/10 text-white text-xs"
                       />
@@ -703,6 +709,12 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
                       <Input
                         value={codeforcesUsername}
                         onChange={(e) => setCodeforcesUsername(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSyncCodeforces();
+                          }
+                        }}
                         placeholder="Codeforces handle"
                         className="bg-black/50 border-white/10 text-white text-xs"
                       />
