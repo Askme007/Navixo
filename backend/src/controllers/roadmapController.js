@@ -242,7 +242,7 @@ export async function saveRoadmap(req, res) {
 export async function setActiveRoadmap(req, res) {
   try {
     const userId = req.user.id;
-    const { roadmapId } = req.params;
+    const roadmapId = req.params.roadmapId || req.params.id;
 
     if (!isValidUUID(roadmapId)) {
       return res.status(404).json({ error: "Roadmap not found or unauthorized." });

@@ -23,6 +23,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Plus,
+  X,
 } from "lucide-react";
 
 interface ProfilePageProps {
@@ -42,6 +44,11 @@ const COMMON_WEAK_TOPICS = [
   "Greedy Algorithms",
   "Bit Manipulation",
   "Recursion & Backtracking",
+  "Sliding Window & Two Pointers",
+  "Trie & String Algorithms",
+  "Heaps & Priority Queues",
+  "Monotonic Stack & Queue",
+  "Microservices & Caching",
 ];
 
 export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps) {
@@ -63,6 +70,7 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
   const [college, setCollege] = useState("");
   const [shortTermGoal, setShortTermGoal] = useState("");
   const [weakTopics, setWeakTopics] = useState<string[]>([]);
+  const [customTopicInput, setCustomTopicInput] = useState("");
 
   // Platform handles
   const [leetcodeUsername, setLeetcodeUsername] = useState("");
@@ -86,7 +94,9 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
         setLoading(true);
         const token = authService.getToken();
         const res = await fetch(`${API_URL}/api/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
         const json = await res.json();
 
@@ -96,7 +106,7 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
 
           setFullName(profile.full_name || userName || "");
           setTargetRole(ob.careerPath || ob.domain || "Software Development Engineer (SDE)");
-          setTargetCompanies(ob.targetCompanies || "Google, Microsoft, Amazon, Atlassian");
+          setTargetCompanies(Array.isArray(ob.targetCompanies) ? ob.targetCompanies.join(", ") : (ob.targetCompanies || "Google, Microsoft, Amazon, Atlassian"));
           setPrimaryLanguage(ob.primaryLanguage || "C++");
           setDailyTime(ob.dailyTime || "2-3");
           setSkillLevel(ob.skillLevel ? String(ob.skillLevel) : "5");
@@ -127,6 +137,27 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
     setWeakTopics((prev) =>
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
     );
+  };
+
+  const handleAddCustomTopic = () => {
+    const trimmed = customTopicInput.trim();
+    if (!trimmed) return;
+
+    const alreadyExists = weakTopics.some(
+      (t) => t.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (alreadyExists) {
+      toast.error(`"${trimmed}" is already in your focus list.`);
+      return;
+    }
+
+    setWeakTopics((prev) => [...prev, trimmed]);
+    setCustomTopicInput("");
+    toast.success(`Added "${trimmed}" to priority focus.`);
+  };
+
+  const handleRemoveWeakTopic = (topicToRemove: string) => {
+    setWeakTopics((prev) => prev.filter((t) => t !== topicToRemove));
   };
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -509,34 +540,100 @@ export function ProfilePage({ userName, onNavigate, onLogout }: ProfilePageProps
                       Priority Focus & Weak Areas
                     </CardTitle>
                   </div>
-                  <span className="text-xs text-white/40 font-mono">
+                  <span className="text-xs text-purple-300 font-mono font-semibold bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
                     {weakTopics.length} selected
                   </span>
                 </CardHeader>
 
-                <p className="text-xs text-white/50 mb-4">
-                  Select the concepts where you experience execution roadblocks. The daily protocol generator and AI Mentor will prioritize actionable practice for these topics.
+                <p className="text-xs text-white/50 mb-5">
+                  Select or add the concepts where you experience execution roadblocks. The daily protocol generator and AI Mentor will prioritize actionable practice for these topics.
                 </p>
 
-                <div className="flex flex-wrap gap-2.5">
-                  {COMMON_WEAK_TOPICS.map((topic) => {
-                    const isSelected = weakTopics.includes(topic);
-                    return (
-                      <button
-                        key={topic}
-                        type="button"
-                        onClick={() => toggleWeakTopic(topic)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-mono font-medium transition-all border ${
-                          isSelected
-                            ? "bg-purple-500/20 text-purple-200 border-purple-500/40 shadow-sm shadow-purple-500/20"
-                            : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
-                        {isSelected && <span className="mr-1.5 text-purple-400">✓</span>}
-                        {topic}
-                      </button>
-                    );
-                  })}
+                {/* Custom Topic Input Bar */}
+                <div className="flex gap-2.5 mb-5">
+                  <div className="relative flex-1">
+                    <Input
+                      value={customTopicInput}
+                      onChange={(e) => setCustomTopicInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddCustomTopic();
+                        }
+                      }}
+                      placeholder="Add custom topic (e.g. Trie, Segment Tree, Kafka, Redis, WebSockets) and press Enter..."
+                      className="bg-[#07090e] border-white/10 text-white placeholder:text-white/30 text-xs font-mono focus:border-[#8B5CF6] h-10"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleAddCustomTopic}
+                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-xs font-mono px-4 h-10 flex items-center gap-1.5 shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Topic</span>
+                  </Button>
+                </div>
+
+                {/* Selected Active Focus Topics Badges */}
+                <div className="mb-5">
+                  <Label className="text-[11px] text-white/50 uppercase tracking-wider font-mono mb-2.5 block">
+                    Active Focus Topics ({weakTopics.length})
+                  </Label>
+                  {weakTopics.length === 0 ? (
+                    <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 text-center">
+                      <p className="text-xs text-white/40 font-mono">
+                        No focus topics selected yet. Add a custom topic above or click any preset suggestion below.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {weakTopics.map((topic) => (
+                        <span
+                          key={topic}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-purple-500/20 text-purple-200 border border-purple-500/40 shadow-sm shadow-purple-500/20 group transition-all"
+                        >
+                          <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
+                          <span>{topic}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveWeakTopic(topic)}
+                            className="ml-1 p-0.5 rounded-md text-purple-300 hover:text-white hover:bg-purple-500/40 transition-colors"
+                            title={`Remove ${topic}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Preset Suggestions Quick-Select Grid */}
+                <div>
+                  <Label className="text-[11px] text-white/50 uppercase tracking-wider font-mono mb-2.5 block">
+                    Quick-Select Preset Topics
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    {COMMON_WEAK_TOPICS.map((topic) => {
+                      const isSelected = weakTopics.includes(topic);
+                      return (
+                        <button
+                          key={topic}
+                          type="button"
+                          onClick={() => toggleWeakTopic(topic)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all border ${
+                            isSelected
+                              ? "bg-purple-500/20 text-purple-200 border-purple-500/40 shadow-sm shadow-purple-500/20"
+                              : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {isSelected && <span className="mr-1.5 text-purple-400">✓</span>}
+                          {topic}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </Card>
 

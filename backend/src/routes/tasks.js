@@ -320,8 +320,9 @@ router.post('/checkin', authenticateToken, async (req, res) => {
         );
         if (diffDays > 1) {
           consecutiveSkips += diffDays - 1;
-          newStreak = 0;
-          if (consecutiveSkips >= 2) newMode = 'recovery';
+          newStreak = completionRate >= 50 ? 1 : 0;
+          if (consecutiveSkips >= 2 && newStreak === 0) newMode = 'recovery';
+          else if (newStreak > 0) newMode = 'progression';
         } else {
           consecutiveSkips = 0;
           if (completionRate >= 50) newStreak += 1;

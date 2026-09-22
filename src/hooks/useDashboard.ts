@@ -270,6 +270,9 @@ export function useDashboard(): UseDashboardReturn {
     const nextSnapshot: DashboardSnapshot = {
       ...snapshot,
       activeRoadmap: target,
+      userState: snapshot.userState
+        ? { ...snapshot.userState, activeRoadmapId: id }
+        : { streak: 0, mode: "progression", activeRoadmapId: id },
     };
 
     setSnapshot(nextSnapshot);
@@ -279,14 +282,16 @@ export function useDashboard(): UseDashboardReturn {
     }
 
     try {
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL ||
+      const rawBase =
         import.meta.env.VITE_API_URL ||
+        import.meta.env.VITE_API_BASE_URL ||
         "http://localhost:3001";
-      const response = await fetch(`${baseUrl}/api/roadmap/activate/${id}`, {
-        method: "PUT",
+      const baseUrl = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
+      const response = await fetch(`${baseUrl}/api/roadmap/${id}/activate`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${authService.getToken()}`,
+          "Content-Type": "application/json",
         },
       });
 

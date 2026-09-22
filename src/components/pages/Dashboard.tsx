@@ -303,7 +303,7 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <RoadmapsCard
                 roadmaps={savedRoadmaps}
-                activeRoadmapId={activeRoadmap?.id}
+                activeRoadmapId={activeRoadmap?.id || userState?.activeRoadmapId}
                 onOpenRoadmap={(id) => onNavigate(`roadmap/${id}`)}
                 onGenerateRoadmap={() => onNavigate("roadmap")}
                 onDeleteRoadmap={deleteRoadmap}

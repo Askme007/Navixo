@@ -72,6 +72,9 @@ router.post("/:roadmapId/save", saveRoadmap);
 */
 
 router.post("/:roadmapId/activate", setActiveRoadmap);
+router.post("/activate/:roadmapId", setActiveRoadmap);
+router.put("/:roadmapId/activate", setActiveRoadmap);
+router.put("/activate/:roadmapId", setActiveRoadmap);
 
 /*
 |--------------------------------------------------------------------------

@@ -1,6 +1,10 @@
 import { authService } from "./auth.service";
 
-const API = import.meta.env.VITE_API_URL;
+const rawApi =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:3001";
+const API = rawApi.endsWith("/") ? rawApi.slice(0, -1) : rawApi;
 
 async function apiGet(endpoint: string) {
   const token = authService.getToken();

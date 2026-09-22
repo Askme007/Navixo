@@ -28,7 +28,11 @@ export function ExecutionChart({
     );
   }
 
-  if (!data || data.length === 0) {
+  if (
+    !data ||
+    data.length === 0 ||
+    data.every((d) => Number(d.completionRate || 0) === 0)
+  ) {
     return (
       <Card className="bg-[#0F1117] border-[#2f2f2f] rounded-3xl h-[300px] flex flex-col items-center justify-center shadow-[0_0_40px_rgba(0,0,0,0.35)] mb-6">
         <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
@@ -111,7 +115,20 @@ export function ExecutionChart({
                 fillOpacity={1}
                 fill="url(#colorRate)"
                 isAnimationActive={false} // Helps single points render instantly
-                dot={{ r: 4, fill: "#8B5CF6", strokeWidth: 2 }} // ADD THIS: Forces the single dot to appear!
+                dot={(props: any) => {
+                  if (!props.payload || !props.payload.completionRate) return null;
+                  return (
+                    <circle
+                      key={`dot-${props.index}`}
+                      cx={props.cx}
+                      cy={props.cy}
+                      r={4}
+                      fill="#8B5CF6"
+                      stroke="#0B0D12"
+                      strokeWidth={2}
+                    />
+                  );
+                }}
                 activeDot={{
                   r: 6,
                   fill: "#8B5CF6",
