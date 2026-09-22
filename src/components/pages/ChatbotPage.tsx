@@ -61,23 +61,6 @@ const removeCachedMessages = (convId: string) => {
   } catch {}
 };
 
-const getLastActiveConv = (userId: string): string | null => {
-  try {
-    return localStorage.getItem(`navixo_last_active_conv_${userId}`);
-  } catch {
-    return null;
-  }
-};
-
-const saveLastActiveConv = (userId: string, convId: string | null) => {
-  try {
-    if (convId) {
-      localStorage.setItem(`navixo_last_active_conv_${userId}`, convId);
-    } else {
-      localStorage.removeItem(`navixo_last_active_conv_${userId}`);
-    }
-  } catch {}
-};
 
 export function ChatbotPage({
   userName,
@@ -97,24 +80,8 @@ export function ChatbotPage({
   const userId = getUserId();
   const urlId = searchParams.get("id");
 
-  // Determine initial target conversation synchronously for 0ms render
-  const initialConvId = (() => {
-    if (initialMessage || fromRoadmap) {
-      return null;
-    }
-    if (urlId) {
-      return urlId;
-    }
-    const lastActive = getLastActiveConv(userId);
-    const cachedHist = getCachedHistory(userId);
-    if (lastActive && cachedHist.some((h: any) => h.id === lastActive)) {
-      return lastActive;
-    }
-    if (cachedHist.length > 0) {
-      return cachedHist[0].id;
-    }
-    return null;
-  })();
+  // If a specific conversation ID is in the URL, load it; otherwise start clean new session
+  const initialConvId = urlId || null;
 
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<any[]>(() => getCachedHistory(userId));
@@ -140,13 +107,6 @@ export function ChatbotPage({
   const API_URL = import.meta.env.VITE_API_URL;
 
   const currentConvIdRef = useRef<string | null>(initialConvId);
-
-  // Sync URL on initial mount if target conversation was restored from cache
-  useEffect(() => {
-    if (!urlId && initialConvId) {
-      navigate(`/chat?id=${initialConvId}`, { replace: true });
-    }
-  }, []);
 
   // Populate prompt from roadmap and reset initialMessage state
   useEffect(() => {
@@ -196,31 +156,13 @@ export function ChatbotPage({
         if (currentUrlId !== currentConvIdRef.current || messages.length <= 1) {
           currentConvIdRef.current = currentUrlId;
           setConvId(currentUrlId);
-          saveLastActiveConv(activeUserId, currentUrlId);
           loadChat(currentUrlId, token);
         }
-      } else if (!fromRoadmap && !initialMessage) {
-        const lastActive = getLastActiveConv(activeUserId);
-        const cachedHist = getCachedHistory(activeUserId);
-        const targetId =
-          lastActive && cachedHist.some((h: any) => h.id === lastActive)
-            ? lastActive
-            : cachedHist.length > 0
-            ? cachedHist[0].id
-            : null;
-
-        if (targetId) {
-          currentConvIdRef.current = targetId;
-          setConvId(targetId);
-          saveLastActiveConv(activeUserId, targetId);
-          navigate(`/chat?id=${targetId}`, { replace: true });
-          loadChat(targetId, token);
-        } else {
-          currentConvIdRef.current = null;
-          setConvId(null);
-          saveLastActiveConv(activeUserId, null);
-          setMessages([DEFAULT_INIT_MESSAGE]);
-        }
+      } else {
+        // No ID in URL (/chat) -> cleanly initialize new session, do not redirect
+        currentConvIdRef.current = null;
+        setConvId(null);
+        setMessages([DEFAULT_INIT_MESSAGE]);
       }
     };
 
@@ -244,7 +186,6 @@ export function ChatbotPage({
     const activeUserId = getUserId();
     setConvId(id);
     currentConvIdRef.current = id;
-    saveLastActiveConv(activeUserId, id);
 
     if (searchParams.get("id") !== id) {
       navigate(`/chat?id=${id}`, {
@@ -283,10 +224,8 @@ export function ChatbotPage({
   };
 
   const handleNewChat = () => {
-    const activeUserId = getUserId();
     currentConvIdRef.current = null;
     setConvId(null);
-    saveLastActiveConv(activeUserId, null);
     setMessages([DEFAULT_INIT_MESSAGE]);
     navigate("/chat", { replace: true });
   };
@@ -395,7 +334,6 @@ export function ChatbotPage({
 
         currentConvIdRef.current = activeId;
         setConvId(activeId);
-        saveLastActiveConv(activeUserId, activeId);
 
         navigate(`/chat?id=${activeId}`, {
           replace: true,
@@ -499,7 +437,6 @@ export function ChatbotPage({
       setMessages((prev) => {
         if (activeId) {
           saveCachedMessages(activeId, prev);
-          saveLastActiveConv(activeUserId, activeId);
         }
         return prev;
       });
