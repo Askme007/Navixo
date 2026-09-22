@@ -255,7 +255,7 @@ function RoadmapStepCard({
   return (
     <Card
       id={`step-${step.id}`}
-      className={`overflow-hidden transition-all duration-500 ${
+      className={`overflow-hidden transition-all duration-500 max-w-full ${
         isTarget
           ? "border-purple-500/80 bg-purple-950/20 shadow-[0_0_35px_rgba(139,92,246,0.35)] ring-1 ring-purple-500/50"
           : "border-white/10 bg-white/5 shadow-sm hover:border-white/20"
@@ -264,20 +264,20 @@ function RoadmapStepCard({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-start gap-3 p-4 text-left sm:p-5 outline-none focus-visible:bg-white/5 transition-colors"
+        className="flex w-full items-start gap-2.5 sm:gap-3 p-3.5 sm:p-5 text-left outline-none focus-visible:bg-white/5 transition-colors min-w-0 overflow-hidden"
       >
-        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-slate-950/70">
+        <div className="mt-0.5 flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-slate-950/70">
           {getStatusIcon(step.status)}
         </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-slate-500">
               Step {index + 1}
             </span>
             <Badge
               variant="secondary"
-              className={`rounded-full border px-2.5 py-0.5 text-[11px] ${levelBadgeClass(
+              className={`rounded-full border px-2 py-0.5 text-[10px] sm:text-[11px] ${levelBadgeClass(
                 step.level,
               )}`}
             >
@@ -285,7 +285,7 @@ function RoadmapStepCard({
             </Badge>
             <Badge
               variant="secondary"
-              className={`rounded-full border px-2.5 py-0.5 text-[11px] ${statusBadgeClass(
+              className={`rounded-full border px-2 py-0.5 text-[10px] sm:text-[11px] ${statusBadgeClass(
                 step.status,
               )}`}
             >
@@ -296,23 +296,22 @@ function RoadmapStepCard({
                 <Sparkles className="w-2.5 h-2.5 text-purple-400" /> Focus Target
               </span>
             )}
-            <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-              <Clock className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs text-slate-400">
+              <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               {step.duration}
             </span>
           </div>
 
-          <h3 className="mt-1 text-base font-semibold text-white sm:text-lg">
+          <h3 className="mt-1 text-sm sm:text-base md:text-lg font-semibold text-white break-words">
             {step.title}
           </h3>
 
-          <p className="mt-1 text-sm leading-6 text-slate-400">
+          <p className="mt-1 text-xs sm:text-sm leading-relaxed text-slate-400 break-words">
             {step.description}
           </p>
         </div>
 
-        <div className="shrink-0 pt-1 text-slate-400">
-          {/* Animated Chevron: Rotates perfectly based on expanded state */}
+        <div className="shrink-0 pt-1 text-slate-400 ml-1">
           <ChevronDown
             className={`h-4 w-4 transition-transform duration-300 ease-in-out ${expanded ? "rotate-180" : "rotate-0"}`}
           />
@@ -325,9 +324,9 @@ function RoadmapStepCard({
           expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
       >
-        <div className="overflow-hidden">
-          <CardContent className="border-t border-white/10 p-4 sm:p-5">
-            <div className="space-y-4">
+        <div className="overflow-hidden min-w-0 w-full">
+          <CardContent className="border-t border-white/10 p-3.5 sm:p-5 min-w-0 w-full">
+            <div className="space-y-4 min-w-0">
               <div>
                 <p className="mb-2 text-xs uppercase tracking-[0.18em] text-slate-500">
                   Update status
@@ -358,20 +357,20 @@ function RoadmapStepCard({
               </div>
 
               {step.mentorTip && (
-                <div className="rounded-2xl border border-amber-500/15 bg-amber-500/8 p-4">
+                <div className="rounded-2xl border border-amber-500/15 bg-amber-500/8 p-3.5 sm:p-4 min-w-0">
                   <div className="mb-2 flex items-center gap-2">
-                    <Lightbulb className="h-4 w-4 text-amber-300" />
+                    <Lightbulb className="h-4 w-4 text-amber-300 shrink-0" />
                     <span className="text-sm font-medium text-white">
                       Mentor tip
                     </span>
                   </div>
-                  <p className="text-sm leading-6 text-slate-200">
+                  <p className="text-xs sm:text-sm leading-6 text-slate-200 break-words">
                     {step.mentorTip}
                   </p>
                 </div>
               )}
 
-              <div>
+              <div className="min-w-0">
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <h4 className="text-sm font-medium text-white">Resources</h4>
                   <span className="text-xs text-slate-500">
@@ -380,7 +379,7 @@ function RoadmapStepCard({
                 </div>
 
                 {resources.length > 0 ? (
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 min-w-0 w-full">
                     {resources.map((resource, resourceIndex) => (
                       <button
                         key={`${resource.title}-${resourceIndex}`}
@@ -395,27 +394,27 @@ function RoadmapStepCard({
                             "_blank",
                           );
                         }}
-                        className="flex w-full items-start gap-3 rounded-xl border border-white/10 bg-slate-950/60 p-3 text-left transition hover:border-white/20 hover:bg-white/5"
+                        className="flex w-full max-w-full items-center gap-2.5 sm:gap-3 rounded-xl border border-white/10 bg-slate-950/60 p-2.5 sm:p-3 text-left transition hover:border-white/20 hover:bg-white/5 min-w-0 overflow-hidden"
                       >
-                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
+                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
                           {getResourceIcon(resource.type)}
                         </div>
 
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-white">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <p className="truncate text-xs sm:text-sm font-medium text-white block">
                             {resource.title}
                           </p>
-                          <p className="truncate text-xs text-slate-400">
+                          <p className="truncate text-[11px] sm:text-xs text-slate-400 block">
                             {resource.provider}
                           </p>
                         </div>
 
-                        <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                        <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-slate-500" />
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-4 text-sm text-slate-400">
+                  <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/40 p-3 sm:p-4 text-xs sm:text-sm text-slate-400">
                     No resources linked yet.
                   </div>
                 )}
@@ -970,7 +969,7 @@ export function RoadmapPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-white">
+    <div className="min-h-screen bg-[#0B0B0F] text-white overflow-x-hidden w-full max-w-full">
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sky-500/5 via-[#0B0B0F] to-violet-500/5" />
 
       <div className="sticky top-0 z-20 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
@@ -1027,7 +1026,7 @@ export function RoadmapPage({
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
         <div className="space-y-4 sm:space-y-5">
           <Card className="border-white/10 bg-white/5 shadow-sm">
             <CardContent className="p-4 sm:p-5">
@@ -1273,16 +1272,16 @@ export function RoadmapPage({
           )}
 
           {(hasRoadmap || roadmapId) && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-sm sm:p-5">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 sm:p-5 shadow-sm max-w-full overflow-hidden">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between min-w-0">
                 <div className="min-w-0">
-                  <p className="text-sm text-slate-400">Actions</p>
-                  <p className="text-base font-medium text-white">
+                  <p className="text-xs sm:text-sm text-slate-400">Actions</p>
+                  <p className="text-sm sm:text-base font-medium text-white">
                     Save, export, or share this roadmap
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2 max-w-full">
                   {roadmapId && hasRoadmap && isOwner && (
                     <>
                       <SaveRoadmapButton

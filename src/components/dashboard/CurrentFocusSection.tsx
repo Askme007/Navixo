@@ -48,11 +48,11 @@ export function CurrentFocusSection({
   }
 
   return (
-    <Card className="bg-[#13151B]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Target className="w-5 h-5 text-[#14F4C9]" />
+    <Card className="bg-[#13151B]/60 backdrop-blur-xl border border-white/10 rounded-2xl p-4 sm:p-6 max-w-full overflow-hidden">
+      <div className="flex items-center gap-2 mb-4 sm:mb-6">
+        <Target className="w-5 h-5 text-[#14F4C9] shrink-0" />
         <h2
-          className="text-white text-lg font-semibold"
+          className="text-white text-base sm:text-lg font-semibold"
           style={{ fontFamily: "Space Grotesk, sans-serif" }}
         >
           Current Focus
@@ -64,26 +64,26 @@ export function CurrentFocusSection({
           <div
             key={step.id}
             onClick={() => onViewStep(step.id)}
-            className={`p-4 rounded-xl border flex items-center justify-between gap-4 transition-all cursor-pointer group ${
+            className={`p-3 sm:p-4 rounded-xl border flex items-center justify-between gap-3 transition-all cursor-pointer group min-w-0 w-full overflow-hidden ${
               step.status === "in-progress"
                 ? "bg-[#8B5CF6]/10 border-[#8B5CF6]/30 hover:border-[#8B5CF6]/50"
                 : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
             }`}
           >
-            <div className="flex items-start gap-4">
-              <div className="mt-1">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <div className="mt-0.5 shrink-0">
                 <CheckCircle2
-                  className={`w-5 h-5 ${step.status === "in-progress" ? "text-[#8B5CF6]" : "text-white/30"}`}
+                  className={`w-4 h-4 sm:w-5 sm:h-5 ${step.status === "in-progress" ? "text-[#8B5CF6]" : "text-white/30"}`}
                 />
               </div>
-              <div>
-                <h4 className="text-white font-medium text-sm md:text-base mb-1 group-hover:text-purple-300 transition-colors">
+              <div className="min-w-0 flex-1">
+                <h4 className="text-white font-medium text-xs sm:text-sm md:text-base mb-0.5 group-hover:text-purple-300 transition-colors truncate">
                   {step.title}
                 </h4>
-                <p className="text-white/50 text-xs md:text-sm line-clamp-1 mb-2">
+                <p className="text-white/50 text-[11px] sm:text-xs line-clamp-1 mb-2">
                   {step.description}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/70 uppercase tracking-wider">
                     {step.level}
                   </span>
@@ -100,7 +100,7 @@ export function CurrentFocusSection({
                 onViewStep(step.id);
               }}
               variant="ghost"
-              className="flex bg-white/5 hover:bg-purple-600 hover:text-white text-white/80 text-xs border border-white/10 rounded-lg shrink-0 transition-all font-medium"
+              className="h-8 px-2.5 sm:px-3 bg-white/5 hover:bg-purple-600 hover:text-white text-white/80 text-xs border border-white/10 rounded-lg shrink-0 transition-all font-medium self-center"
             >
               View Node
             </Button>

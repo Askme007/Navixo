@@ -1,7 +1,5 @@
-// src/components/ShareButton.tsx
-
 import { useState, useRef, useEffect } from "react";
-import { Share2, Link, Mail, Twitter, Globe, Lock, Check, Loader2 } from "lucide-react";
+import { Share2, Link, Mail, Twitter, Globe, Lock, Check, Loader2, X } from "lucide-react";
 import { Button } from "./ui/button";
 import { toast } from "sonner";
 
@@ -170,24 +168,42 @@ export function ShareButton({
         <span className="hidden sm:inline">Share</span>
       </Button>
 
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 sm:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
       {/* Share Panel Popup */}
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute bottom-full right-0 mb-2 w-72 bg-[#181A22]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+          className="fixed inset-x-4 bottom-6 z-50 max-w-sm mx-auto sm:absolute sm:inset-auto sm:bottom-full sm:right-0 sm:mb-2 sm:w-80 bg-[#181A22]/98 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden"
           style={{
             animation: "slideDown 200ms ease-out",
           }}
         >
           <div className="p-4 space-y-3">
             {/* Header */}
-            <div>
-              <h4 className="text-white text-sm font-semibold">
-                Share Roadmap
-              </h4>
-              <p className="text-slate-400 text-xs mt-0.5">
-                Share with friends, mentors, or colleagues.
-              </p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h4 className="text-white text-sm font-semibold">
+                  Share Roadmap
+                </h4>
+                <p className="text-slate-400 text-xs mt-0.5">
+                  Share with friends, mentors, or colleagues.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors sm:hidden"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Visibility Settings (Owner Only) */}
