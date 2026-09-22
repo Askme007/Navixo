@@ -234,11 +234,21 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
                 />
               </div>
 
-              {/* Right 5 Columns: Today's Actionable Protocol Deck */}
+              {/* Right 5 Columns: Today's Actionable Daily Execution Deck */}
               <div className="lg:col-span-5 h-full">
                 <TaskCheckinCard
                   initialTasks={todayTasks}
                   onCheckinComplete={refreshDashboard}
+                  activeRoadmapTitle={activeRoadmap?.title}
+                  currentStreak={currentStreak}
+                  onNavigateToRoadmap={() => {
+                    const targetRoadmapId = activeRoadmap?.id || userState?.activeRoadmapId;
+                    if (targetRoadmapId) {
+                      onNavigate(`roadmap/${targetRoadmapId}`);
+                    } else {
+                      onNavigate("roadmap");
+                    }
+                  }}
                 />
               </div>
             </div>

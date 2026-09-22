@@ -284,7 +284,35 @@ router.post('/checkin', authenticateToken, async (req, res) => {
     });
 
     if (existingCheckin) {
-      return res.status(400).json({ error: 'Execution already locked for today.' });
+      await prisma.task_checkins.update({
+        where: { id: existingCheckin.id },
+        data: {
+          tasks_completed: completedTasks || [],
+          completion_rate: completionRate,
+          notes: notes || '',
+        },
+      });
+
+      try {
+        await prisma.execution_history?.upsert({
+          where: {
+            user_id_date: { user_id: userId, date: new Date(today) },
+          },
+          update: {
+            completion_rate: completionRate,
+          },
+          create: {
+            user_id: userId,
+            date: new Date(today),
+            phase: 'Foundation',
+            streak_at_time: 1,
+            mode_at_time: 'progression',
+            completion_rate: completionRate,
+          },
+        });
+      } catch {}
+
+      return res.status(200).json({ success: true, message: 'Check-in updated successfully.' });
     }
 
     // Get or Create User State
