@@ -1,5 +1,6 @@
 // src/components/dashboard/CodeforcesCard.tsx
 
+import { useState, useEffect } from "react";
 import { RefreshCw, Trophy, Sparkles } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
@@ -54,9 +55,77 @@ const getRankMetaFromRating = (rating: number) => {
 
 const getAbsoluteUrl = (url?: string | null) => {
   if (!url) return null;
-  if (url.startsWith("//")) return `https:${url}`;
-  return url;
+  let clean = url.trim();
+  if (clean.startsWith("//")) clean = `https:${clean}`;
+  return clean.replace(
+    /^https?:\/\/userpic\.codeforces\.org\//i,
+    "https://codeforces.com/userpic/"
+  );
 };
+
+function CodeforcesAvatar({
+  avatarUrl,
+  titlePhotoUrl,
+  username,
+  badgeColor,
+}: {
+  avatarUrl?: string | null;
+  titlePhotoUrl?: string | null;
+  username: string;
+  badgeColor: string;
+}) {
+  const primarySrc = getAbsoluteUrl(avatarUrl) || getAbsoluteUrl(titlePhotoUrl);
+  const [mode, setMode] = useState<"direct" | "proxy" | "fallback">(
+    primarySrc ? "direct" : "fallback"
+  );
+
+  useEffect(() => {
+    setMode(primarySrc ? "direct" : "fallback");
+  }, [primarySrc]);
+
+  const currentSrc =
+    mode === "direct"
+      ? primarySrc
+      : mode === "proxy" && primarySrc
+      ? `/api/platforms/codeforces/avatar-proxy?url=${encodeURIComponent(primarySrc)}`
+      : null;
+
+  const handleImgError = () => {
+    if (mode === "direct" && primarySrc) {
+      setMode("proxy");
+    } else {
+      setMode("fallback");
+    }
+  };
+
+  return (
+    <div
+      className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-2 relative overflow-hidden bg-[#0B0D12]"
+      style={{ borderColor: badgeColor }}
+    >
+      {mode !== "fallback" && currentSrc ? (
+        <img
+          src={currentSrc}
+          alt=""
+          className="w-full h-full rounded-full object-cover select-none"
+          referrerPolicy="no-referrer"
+          onError={handleImgError}
+        />
+      ) : (
+        <div
+          className="w-full h-full rounded-full flex items-center justify-center font-bold text-2xl uppercase select-none tracking-tight"
+          style={{
+            backgroundColor: `${badgeColor}22`,
+            color: badgeColor,
+            fontFamily: "Space Grotesk, sans-serif",
+          }}
+        >
+          {username ? username.charAt(0).toUpperCase() : "CF"}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function CodeforcesCard({ initialProfile }: { initialProfile?: any } = {}) {
   const {
@@ -164,29 +233,17 @@ export function CodeforcesCard({ initialProfile }: { initialProfile?: any } = {}
               .join(" ")
               .trim();
 
-            const avatarSrc =
-              getAbsoluteUrl(cfProfile.title_photo_url) ||
-              getAbsoluteUrl(cfProfile.titlePhotoUrl) ||
-              getAbsoluteUrl(cfProfile.avatar_url) ||
-              getAbsoluteUrl(cfProfile.avatarUrl) ||
-              "/code-forces.svg";
-
             return (
               <>
                 {/* Profile Row: Avatar + Name + Big Trophy */}
                 <div className="flex items-center gap-4 mb-6">
                   {/* Avatar */}
-                  <div
-                    className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-full p-1 border-2"
-                    style={{ borderColor: badgeMeta.color }}
-                  >
-                    <img
-                      src={avatarSrc}
-                      alt={cfProfile.username}
-                      className="w-full h-full rounded-full object-cover bg-[#0B0D12]"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
+                  <CodeforcesAvatar
+                    avatarUrl={cfProfile.avatar_url || cfProfile.avatarUrl}
+                    titlePhotoUrl={cfProfile.title_photo_url || cfProfile.titlePhotoUrl}
+                    username={cfProfile.username}
+                    badgeColor={badgeMeta.color}
+                  />
 
                   {/* Identity */}
                   <div className="flex-1 min-w-0">

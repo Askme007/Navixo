@@ -26,6 +26,16 @@ export interface CodeforcesProfile {
   lastSyncedAt?: string;
 }
 
+export function sanitizeCodeforcesUrl(url?: string | null): string | null {
+  if (!url) return null;
+  let clean = url.trim();
+  if (clean.startsWith("//")) clean = `https:${clean}`;
+  return clean.replace(
+    /^https?:\/\/userpic\.codeforces\.org\//i,
+    "https://codeforces.com/userpic/"
+  );
+}
+
 export function normalizeCodeforcesProfile(p: any): CodeforcesProfile | null {
   if (!p || typeof p !== "object") return null;
 
@@ -37,12 +47,10 @@ export function normalizeCodeforcesProfile(p: any): CodeforcesProfile | null {
       ? Number(p.maxRating)
       : currentRating;
 
-  const photo =
-    p.title_photo_url ||
-    p.titlePhotoUrl ||
-    p.avatar_url ||
-    p.avatarUrl ||
-    null;
+  const cleanAvatar = sanitizeCodeforcesUrl(p.avatar_url || p.avatarUrl);
+  const cleanTitle = sanitizeCodeforcesUrl(p.title_photo_url || p.titlePhotoUrl);
+  const avatar = cleanAvatar || cleanTitle || null;
+  const title = cleanTitle || cleanAvatar || null;
 
   return {
     ...p,
@@ -50,10 +58,10 @@ export function normalizeCodeforcesProfile(p: any): CodeforcesProfile | null {
     rating: currentRating,
     max_rating: maxRating,
     maxRating: maxRating,
-    title_photo_url: photo,
-    titlePhotoUrl: photo,
-    avatar_url: p.avatar_url || p.avatarUrl || photo,
-    avatarUrl: p.avatarUrl || p.avatar_url || photo,
+    title_photo_url: title,
+    titlePhotoUrl: title,
+    avatar_url: avatar,
+    avatarUrl: avatar,
     first_name: p.first_name || p.firstName || null,
     firstName: p.firstName || p.first_name || null,
     last_name: p.last_name || p.lastName || null,

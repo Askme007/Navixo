@@ -1,5 +1,15 @@
 import prisma from "../../lib/prisma.js";
 
+export function sanitizeCfUrl(url) {
+  if (!url) return null;
+  let clean = String(url).trim();
+  if (clean.startsWith("//")) clean = `https:${clean}`;
+  return clean.replace(
+    /^https?:\/\/userpic\.codeforces\.org\//i,
+    "https://codeforces.com/userpic/"
+  );
+}
+
 export class CodeforcesService {
   static async syncProfile(userId, username) {
     // 1. Fetch basic profile from Codeforces
@@ -38,7 +48,8 @@ export class CodeforcesService {
 
     // 3. Compute structural helpers for frontend compatibility
     const realName = [user.firstName, user.lastName].filter(Boolean).join(" ");
-    const avatar = user.titlePhoto || user.avatar || null;
+    const avatar = sanitizeCfUrl(user.avatar || user.titlePhoto || null);
+    const titlePhoto = sanitizeCfUrl(user.titlePhoto || user.avatar || null);
 
     // 4. Save or update profile data in database
     const profile = await prisma.codeforcesProfile.upsert({
@@ -50,7 +61,7 @@ export class CodeforcesService {
         firstName: user.firstName ?? null,
         lastName: user.lastName ?? null,
         avatarUrl: avatar,
-        titlePhotoUrl: user.titlePhoto ?? null,
+        titlePhotoUrl: titlePhoto,
         rating: user.rating ?? 0,
         maxRating: user.maxRating ?? 0,
         rank: user.rank ?? "unrated",
@@ -63,7 +74,7 @@ export class CodeforcesService {
         firstName: user.firstName ?? null,
         lastName: user.lastName ?? null,
         avatarUrl: avatar,
-        titlePhotoUrl: user.titlePhoto ?? null,
+        titlePhotoUrl: titlePhoto,
         rating: user.rating ?? 0,
         maxRating: user.maxRating ?? 0,
         rank: user.rank ?? "unrated",
@@ -87,12 +98,10 @@ export class CodeforcesService {
         .join(" ")
         .trim();
 
-    const photo =
-      profile.titlePhotoUrl ||
-      profile.title_photo_url ||
-      profile.avatarUrl ||
-      profile.avatar_url ||
-      null;
+    const cleanAvatar = sanitizeCfUrl(profile.avatarUrl || profile.avatar_url);
+    const cleanTitle = sanitizeCfUrl(profile.titlePhotoUrl || profile.title_photo_url);
+    const avatar = cleanAvatar || cleanTitle || null;
+    const titlePhoto = cleanTitle || cleanAvatar || null;
 
     const maxRating =
       profile.maxRating !== undefined && profile.maxRating !== null
@@ -111,10 +120,10 @@ export class CodeforcesService {
       last_name: profile.lastName || profile.last_name || null,
       maxRating,
       max_rating: maxRating,
-      avatarUrl: profile.avatarUrl || profile.avatar_url || photo,
-      avatar_url: profile.avatarUrl || profile.avatar_url || photo,
-      titlePhotoUrl: photo,
-      title_photo_url: photo,
+      avatarUrl: avatar,
+      avatar_url: avatar,
+      titlePhotoUrl: titlePhoto,
+      title_photo_url: titlePhoto,
     };
 
     return JSON.parse(
