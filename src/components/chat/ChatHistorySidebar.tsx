@@ -6,18 +6,20 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "../ui/sheet";
-import { Menu, MessageSquare, Plus } from "lucide-react";
+import { Menu, MessageSquare, Plus, Trash2 } from "lucide-react";
 
 export function ChatHistorySidebar({
   history,
   currentId,
   onSelect,
   onNewChat,
+  onDelete,
 }: {
   history: any[];
   currentId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
+  onDelete?: (id: string, e: React.MouseEvent) => void;
 }) {
   return (
     <Sheet>
@@ -48,27 +50,43 @@ export function ChatHistorySidebar({
             <Plus className="w-4 h-4 mr-2" /> New Session
           </Button>
 
-          <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar pr-2">
+          <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar pr-1">
             {history.length === 0 && (
               <p className="text-sm text-slate-500 text-center mt-4">
                 No past sessions found.
               </p>
             )}
             {history.map((h) => (
-              <button
+              <div
                 key={h.id}
                 onClick={() => onSelect(h.id)}
-                className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-colors ${
+                className={`group relative w-full text-left p-3 rounded-xl flex items-center justify-between gap-2 transition-all cursor-pointer select-none ${
                   currentId === h.id
-                    ? "bg-white/10 text-white"
+                    ? "bg-white/10 text-white shadow-sm"
                     : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
                 }`}
               >
-                <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate text-sm font-medium">
-                  {h.title || "Execution Session"}
-                </span>
-              </button>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <MessageSquare className="w-4 h-4 flex-shrink-0 text-slate-400 group-hover:text-purple-400 transition-colors" />
+                  <span className="truncate text-sm font-medium">
+                    {h.title || "Execution Session"}
+                  </span>
+                </div>
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(h.id, e);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded-lg text-slate-500 transition-all shrink-0 cursor-pointer"
+                    title="Delete session"
+                    aria-label="Delete session"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>

@@ -141,6 +141,10 @@ export default function App() {
               onBack={() => navigate("/dashboard")}
               initialMessage={initialMessage}
               fromRoadmap={fromRoadmap}
+              onClearInitialMessage={() => {
+                setInitialMessage(undefined);
+                setFromRoadmap(false);
+              }}
             />
           </ProtectedRoute>
         }

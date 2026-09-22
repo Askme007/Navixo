@@ -1,10 +1,10 @@
-// src/components/pages/ChatbotPage.tsx
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { authService } from "../../services/auth.service";
 import { Button } from "../ui/button";
 import { ArrowLeft } from "lucide-react";
 import { NavixoLogo } from "../NavixoLogo";
+import { toast } from "sonner";
 
 import { ChatHistorySidebar } from "../chat/ChatHistorySidebar";
 import { ChatAnalysisSidebar } from "../chat/ChatAnalysisSidebar";
@@ -12,25 +12,123 @@ import { ChatMessageList } from "../chat/ChatMessageList";
 import { ChatPromptBar } from "../chat/ChatPromptBar";
 import "../chat/ChatbotPage.css";
 
+const DEFAULT_INIT_MESSAGE = {
+  id: "init",
+  role: "assistant",
+  content:
+    "Navixo Core Session initialized. Provide a parameter matrix, problem description, or a structural task dependency bottleneck to analyze execution paths.",
+};
+
+const getUserId = () => authService.getUser()?.id || "default";
+
+const getCachedHistory = (userId: string): any[] => {
+  try {
+    const raw = localStorage.getItem(`navixo_chat_history_${userId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveCachedHistory = (userId: string, history: any[]) => {
+  try {
+    localStorage.setItem(`navixo_chat_history_${userId}`, JSON.stringify(history));
+  } catch (e) {
+    console.error("Failed to save cached history", e);
+  }
+};
+
+const getCachedMessages = (convId: string): any[] | null => {
+  try {
+    const raw = localStorage.getItem(`navixo_chat_msgs_${convId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveCachedMessages = (convId: string, messages: any[]) => {
+  try {
+    localStorage.setItem(`navixo_chat_msgs_${convId}`, JSON.stringify(messages));
+  } catch (e) {
+    console.error("Failed to save cached messages", e);
+  }
+};
+
+const removeCachedMessages = (convId: string) => {
+  try {
+    localStorage.removeItem(`navixo_chat_msgs_${convId}`);
+  } catch {}
+};
+
+const getLastActiveConv = (userId: string): string | null => {
+  try {
+    return localStorage.getItem(`navixo_last_active_conv_${userId}`);
+  } catch {
+    return null;
+  }
+};
+
+const saveLastActiveConv = (userId: string, convId: string | null) => {
+  try {
+    if (convId) {
+      localStorage.setItem(`navixo_last_active_conv_${userId}`, convId);
+    } else {
+      localStorage.removeItem(`navixo_last_active_conv_${userId}`);
+    }
+  } catch {}
+};
+
 export function ChatbotPage({
   userName,
   onBack,
   initialMessage,
   fromRoadmap,
+  onClearInitialMessage,
 }: {
   userName: string;
   onBack: () => void;
   initialMessage?: string;
   fromRoadmap?: boolean;
+  onClearInitialMessage?: () => void;
 }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const userId = getUserId();
+  const urlId = searchParams.get("id");
+
+  // Determine initial target conversation synchronously for 0ms render
+  const initialConvId = (() => {
+    if (initialMessage || fromRoadmap) {
+      return null;
+    }
+    if (urlId) {
+      return urlId;
+    }
+    const lastActive = getLastActiveConv(userId);
+    const cachedHist = getCachedHistory(userId);
+    if (lastActive && cachedHist.some((h: any) => h.id === lastActive)) {
+      return lastActive;
+    }
+    if (cachedHist.length > 0) {
+      return cachedHist[0].id;
+    }
+    return null;
+  })();
 
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>(() => getCachedHistory(userId));
+  const [convId, setConvId] = useState<string | null>(initialConvId);
+  const [messages, setMessages] = useState<any[]>(() => {
+    if (initialConvId) {
+      const cached = getCachedMessages(initialConvId);
+      if (cached && cached.length > 0) {
+        return cached;
+      }
+    }
+    return [DEFAULT_INIT_MESSAGE];
+  });
 
-  const [convId, setConvId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
@@ -41,7 +139,27 @@ export function ChatbotPage({
   const scrollRef = useRef<HTMLDivElement>(null);
   const API_URL = import.meta.env.VITE_API_URL;
 
-  const currentConvIdRef = useRef<string | null>(null);
+  const currentConvIdRef = useRef<string | null>(initialConvId);
+
+  // Sync URL on initial mount if target conversation was restored from cache
+  useEffect(() => {
+    if (!urlId && initialConvId) {
+      navigate(`/chat?id=${initialConvId}`, { replace: true });
+    }
+  }, []);
+
+  // Populate prompt from roadmap and reset initialMessage state
+  useEffect(() => {
+    if (initialMessage && fromRoadmap) {
+      setInput(initialMessage);
+      currentConvIdRef.current = null;
+      setConvId(null);
+      setMessages([DEFAULT_INIT_MESSAGE]);
+      if (onClearInitialMessage) {
+        onClearInitialMessage();
+      }
+    }
+  }, [initialMessage, fromRoadmap, onClearInitialMessage]);
 
   useEffect(() => {
     const init = async () => {
@@ -52,48 +170,62 @@ export function ChatbotPage({
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/conversations/list`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const activeUserId = getUserId();
 
-      const data = await res.json();
-
-      setHistory(data.conversations || []);
-
-      const urlId = searchParams.get("id");
-
-      if (urlId && urlId !== currentConvIdRef.current) {
-        currentConvIdRef.current = urlId;
-        setConvId(urlId);
-
-        loadChat(urlId, token);
-      } else if (!urlId) {
-        currentConvIdRef.current = null;
-        setConvId(null);
-
-        setMessages([
-          {
-            id: "init",
-            role: "assistant",
-            content:
-              "Navixo Core Session initialized. Provide a parameter matrix, problem description, or a structural task dependency bottleneck to analyze execution paths.",
+      // Silent background revalidation of conversation history
+      try {
+        const res = await fetch(`${API_URL}/api/conversations/list`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-        ]);
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const fetchedHistory = data.conversations || [];
+          setHistory(fetchedHistory);
+          saveCachedHistory(activeUserId, fetchedHistory);
+        }
+      } catch (err) {
+        console.error("Failed to revalidate conversations list", err);
+      }
+
+      const currentUrlId = searchParams.get("id");
+
+      if (currentUrlId) {
+        if (currentUrlId !== currentConvIdRef.current || messages.length <= 1) {
+          currentConvIdRef.current = currentUrlId;
+          setConvId(currentUrlId);
+          saveLastActiveConv(activeUserId, currentUrlId);
+          loadChat(currentUrlId, token);
+        }
+      } else if (!fromRoadmap && !initialMessage) {
+        const lastActive = getLastActiveConv(activeUserId);
+        const cachedHist = getCachedHistory(activeUserId);
+        const targetId =
+          lastActive && cachedHist.some((h: any) => h.id === lastActive)
+            ? lastActive
+            : cachedHist.length > 0
+            ? cachedHist[0].id
+            : null;
+
+        if (targetId) {
+          currentConvIdRef.current = targetId;
+          setConvId(targetId);
+          saveLastActiveConv(activeUserId, targetId);
+          navigate(`/chat?id=${targetId}`, { replace: true });
+          loadChat(targetId, token);
+        } else {
+          currentConvIdRef.current = null;
+          setConvId(null);
+          saveLastActiveConv(activeUserId, null);
+          setMessages([DEFAULT_INIT_MESSAGE]);
+        }
       }
     };
 
     init();
   }, [searchParams]);
-
-  useEffect(() => {
-    if (initialMessage && fromRoadmap) {
-      setTimeout(() => {
-        setInput(initialMessage);
-      }, 400);
-    }
-  }, [initialMessage, fromRoadmap]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -109,60 +241,121 @@ export function ChatbotPage({
       return;
     }
 
+    const activeUserId = getUserId();
     setConvId(id);
     currentConvIdRef.current = id;
+    saveLastActiveConv(activeUserId, id);
 
-    navigate(`/chat?id=${id}`, {
-      replace: true,
-    });
+    if (searchParams.get("id") !== id) {
+      navigate(`/chat?id=${id}`, {
+        replace: true,
+      });
+    }
 
-    const res = await fetch(`${API_URL}/api/messages/${id}`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
+    // 0ms instant display from local cache if available
+    const cached = getCachedMessages(id);
+    if (cached && cached.length > 0) {
+      setMessages(cached);
+    }
 
-    const data = await res.json();
+    try {
+      const res = await fetch(`${API_URL}/api/messages/${id}`, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
 
-    setMessages(
-      (data.messages || []).map((m: any) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-      })),
-    );
+      if (res.ok) {
+        const data = await res.json();
+        const formatted = (data.messages || []).map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+        }));
+
+        const finalMsgs = formatted.length > 0 ? formatted : [DEFAULT_INIT_MESSAGE];
+        setMessages(finalMsgs);
+        saveCachedMessages(id, finalMsgs);
+      }
+    } catch (err) {
+      console.error("Failed to load chat messages", err);
+    }
   };
 
   const handleNewChat = () => {
+    const activeUserId = getUserId();
     currentConvIdRef.current = null;
     setConvId(null);
-    setMessages([
-      {
-        id: "init",
-        role: "assistant",
-        content:
-          "Navixo Core Session initialized. Provide a parameter matrix, problem description, or a structural task dependency bottleneck to analyze execution paths.",
-      },
-    ]);
+    saveLastActiveConv(activeUserId, null);
+    setMessages([DEFAULT_INIT_MESSAGE]);
     navigate("/chat", { replace: true });
+  };
+
+  const handleDeleteChat = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const activeUserId = getUserId();
+    const token = authService.getToken();
+
+    // Optimistic UI updates
+    setHistory((prev) => prev.filter((h) => h.id !== id));
+    const currentCached = getCachedHistory(activeUserId);
+    const updatedHistory = currentCached.filter((h: any) => h.id !== id);
+    saveCachedHistory(activeUserId, updatedHistory);
+    removeCachedMessages(id);
+
+    toast.success("Execution session deleted");
+
+    // If deleting the currently selected session
+    if (convId === id || currentConvIdRef.current === id) {
+      if (updatedHistory.length > 0) {
+        loadChat(updatedHistory[0].id, token || undefined);
+      } else {
+        handleNewChat();
+      }
+    }
+
+    if (token) {
+      try {
+        const res = await fetch(`${API_URL}/api/conversations/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          console.error("Failed to delete conversation on server:", errData);
+          toast.error("Failed to delete session on server");
+        }
+      } catch (err) {
+        console.error("Network error deleting conversation:", err);
+        toast.error("Network error deleting session");
+      }
+    }
   };
 
   const handleSend = async () => {
     if (!input.trim() || isThinking || isStreaming) return;
 
     const userMsg = input.trim();
+    const activeUserId = getUserId();
 
     setInput("");
     setError(null);
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        role: "user",
-        content: userMsg,
-      },
-    ]);
+    setMessages((prev) => {
+      const next = [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "user",
+          content: userMsg,
+        },
+      ];
+      if (convId) saveCachedMessages(convId, next);
+      return next;
+    });
 
     setIsThinking(true);
 
@@ -190,8 +383,6 @@ export function ChatbotPage({
 
         const createData = await createRes.json();
 
-        // console.log("CREATE RESPONSE:", createData);
-
         if (!createRes.ok) {
           throw new Error(createData.error || "Failed to create conversation");
         }
@@ -204,6 +395,7 @@ export function ChatbotPage({
 
         currentConvIdRef.current = activeId;
         setConvId(activeId);
+        saveLastActiveConv(activeUserId, activeId);
 
         navigate(`/chat?id=${activeId}`, {
           replace: true,
@@ -217,10 +409,9 @@ export function ChatbotPage({
           });
 
           const historyData = await historyRes.json();
-
-          // console.log("HISTORY RESPONSE:", historyData);
-
-          setHistory(historyData.conversations || []);
+          const fetchedHistory = historyData.conversations || [];
+          setHistory(fetchedHistory);
+          saveCachedHistory(activeUserId, fetchedHistory);
         } catch (err) {
           console.error("History refresh failed", err);
         }
@@ -304,6 +495,14 @@ export function ChatbotPage({
           }
         }
       }
+
+      setMessages((prev) => {
+        if (activeId) {
+          saveCachedMessages(activeId, prev);
+          saveLastActiveConv(activeUserId, activeId);
+        }
+        return prev;
+      });
     } catch (err: any) {
       console.error("HANDLE SEND ERROR:", err);
       setError(err.message || "Unknown error");
@@ -325,6 +524,7 @@ export function ChatbotPage({
               currentId={convId}
               onSelect={loadChat}
               onNewChat={handleNewChat}
+              onDelete={handleDeleteChat}
             />
 
             <Button
