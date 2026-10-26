@@ -68,7 +68,20 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
         : [];
 
   return (
-    <div className="min-h-screen bg-[#07090e] text-white selection:bg-[#8B5CF6]/30">
+    <div className="min-h-screen bg-[#07090e] text-white selection:bg-[#8B5CF6]/30 relative overflow-hidden">
+      {/* Background Architectural Grid Pattern */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 bg-tech-grid"
+        style={{
+          maskImage:
+            "radial-gradient(ellipse 85% 70% at 50% 20%, black 35%, transparent 95%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 85% 70% at 50% 20%, black 35%, transparent 95%)",
+        }}
+      />
+      {/* Subtle Ambient Radial Spotlight */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(139,92,246,0.06),transparent_70%)]" />
+
       <DashboardHeader
         userName={userName}
         onSidebarToggle={() => setSidebarOpen(true)}
@@ -76,7 +89,7 @@ export function Dashboard({ userName, onNavigate, onLogout }: DashboardProps) {
         onLogoutClick={() => setLogoutModalOpen(true)}
       />
 
-      <div className="flex pt-16 h-screen overflow-hidden">
+      <div className="flex pt-16 h-screen overflow-hidden relative z-10">
         <DashboardSidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
